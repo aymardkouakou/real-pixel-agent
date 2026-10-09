@@ -4,11 +4,15 @@ name: CI
 # Release automatique : sur main (ou via « Run workflow »), si la version du package.json
 # n'a pas encore de release GitHub, le job « release » crée le tag vX.Y.Z et publie la
 # release avec les notes du CHANGELOG et le .vsix. Pousser un tag vX.Y.Z fonctionne aussi.
+# CI TEMPORAIREMENT DÉSACTIVÉE : déclenchement manuel uniquement (onglet Actions → « Run workflow »).
+# Pour la réactiver, remplacer le bloc « on: » par :
+#   on:
+#     push:
+#       branches: [main]
+#       tags: ['v*']
+#     pull_request:
+#     workflow_dispatch:
 on:
-  push:
-    branches: [main]
-    tags: ['v*']
-  pull_request:
   workflow_dispatch:
 
 permissions:
