@@ -1,5 +1,8 @@
 # Journal des versions
 
+## 0.4.2
+- **Salle de plan en mode auto** : un agent qui lance un skill de planification (`writing-plans`, `brainstorming`…) ou écrit un fichier « plan » rejoint la salle de plan, même sans mode plan.
+
 ## 0.4.1
 - **Outillage** : Node 22 (`.nvmrc`, CI) ; mise à jour de `@vscode/vsce` 4, `esbuild` 0.28 et `playwright` 1.64.
 

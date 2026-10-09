@@ -3,7 +3,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { Scanner, parseTail, parseHead, encodeProjectPath } = require('../out/scanner');
+const { Scanner, parseTail, parseHead, encodeProjectPath, isPlanWork } = require('../out/scanner');
 
 const j = (o) => JSON.stringify(o);
 const user = (text) => j({ type: 'user', cwd: '/home/a/monprojet', message: { role: 'user', content: text } });
@@ -106,6 +106,14 @@ t('scanner complet', () => {
   fs.utimesSync(path.join(proj, 'sess1', 'subagents'), later / 1000, later / 1000);
   assert.ok(sc.scan(Date.now()).some((a) => a.title === 'Nouveau'));
   fs.rmSync(root, { recursive: true, force: true });
+});
+
+t('plan rédigé hors mode plan (mode auto)', () => {
+  assert.ok(isPlanWork('Skill', 'superpowers:writing-plans'));
+  assert.ok(isPlanWork('Write', '2026-10-09-migration-plan.md'));
+  assert.ok(!isPlanWork('Write', 'explanation.md'));
+  assert.ok(!isPlanWork('Skill', 'commit'));
+  assert.ok(!isPlanWork('Read', 'plan.md'));
 });
 
 console.log(`\n${n} tests OK`);

@@ -113,6 +113,8 @@ export function describeTool(name: string, input: any): string {
       return trunc(i.query);
     case 'Task': case 'Agent':
       return trunc(i.description || i.subagent_type);
+    case 'Skill':
+      return trunc(i.skill);
     case 'TodoWrite':
       return 'liste de tâches';
     case 'ExitPlanMode':
@@ -122,6 +124,14 @@ export function describeTool(name: string, input: any): string {
     default:
       return name.startsWith('mcp__') ? trunc(name.split('__').slice(1).join(' › ')) : '';
   }
+}
+
+/** Rédaction d'un plan hors mode plan (mode auto) : skill de planification, ou écriture d'un fichier « plan ». */
+export function isPlanWork(tool: string | undefined, detail: string | undefined): boolean {
+  if (!tool || !detail) return false;
+  if (tool === 'Skill') return /plan|brainstorm/i.test(detail);
+  if (tool === 'Write' || tool === 'Edit' || tool === 'MultiEdit') return /(^|[-_.\s])plans?([-_.\s]|$)/i.test(detail);
+  return false;
 }
 
 function textOf(content: any): string {
@@ -507,8 +517,8 @@ export class Scanner {
         }
       }
 
-      // Rédaction d'un plan : mode plan actif, plan présenté (ExitPlanMode) ou sous-agent « Plan » lancé.
-      const planTool = (tool === 'ExitPlanMode' || tool === 'EnterPlanMode' || p.subType === 'Plan' || hs?.subType === 'Plan') && state !== 'waiting';
+      // Rédaction d'un plan : mode plan actif, plan présenté (ExitPlanMode), sous-agent « Plan » lancé, ou skill / fichier de plan (mode auto).
+      const planTool = (tool === 'ExitPlanMode' || tool === 'EnterPlanMode' || isPlanWork(tool, detail) || p.subType === 'Plan' || hs?.subType === 'Plan') && state !== 'waiting';
       if (state !== 'sleeping' && state !== 'permission' && (planTool || planMode)) {
         if (!planTool && !detail) detail = state === 'waiting' ? 'plan en discussion' : 'rédige le plan';
         state = 'planning';
