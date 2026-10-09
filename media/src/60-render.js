@@ -11,7 +11,7 @@ function frame(now) {
   last = now;
   if (LAYOUT) {
     step(dt);
-    if (!use3d) updateCamera(dt);
+    updateCamera(dt);
     if (use3d) {
       if (now - lastRender > 16) { render3d(now); lastRender = now; dirty = false; }
     } else {
@@ -169,14 +169,20 @@ function blitWorld() {
 }
 
 function drawDynamicDecor(t) {
-  // borne d'arcade
+  drawArcade(t);
   const k = ((t / 200) | 0);
-  rect(484, 20, 12, 9, '#0d0221');
-  rect(485 + (k % 10), 22 + ((k >> 1) % 5), 2, 2, ['#ff1744', '#00e676', '#ffea00'][k % 3]);
   // néon qui scintille de temps en temps
   if (k % 47 === 0) { const name = norm(wsName).slice(0, 14); text3(name, 470 - Math.floor(text3w(name) / 2), 5, '#7a2a6a'); }
   // écran de la salle de plan : kanban animé en réunion
-  if (gathering) {
+  if (gathering) drawKanban(t);
+}
+function drawArcade(t) {
+  const k = ((t / 200) | 0);
+  rect(484, 20, 12, 9, '#0d0221');
+  rect(485 + (k % 10), 22 + ((k >> 1) % 5), 2, 2, ['#ff1744', '#00e676', '#ffea00'][k % 3]);
+}
+function drawKanban(t) {
+  {
     rect(196, 2, 88, 11, '#fdfdfd');
     const cycle = (t / 700) % 18;
     const colsC = ['#ffb74d', '#4fc3f7', '#81c784'];

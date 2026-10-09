@@ -43,11 +43,38 @@ const msg = (agents, extra = {}) => ({
 });
 
 function harness(dir) {
-  for (const f of ['main.js', 'style.css']) fs.copyFileSync(path.join(ROOT, 'media', f), path.join(dir, f));
+  for (const f of ['main.js', 'style.css', 'scene3d.js']) fs.copyFileSync(path.join(ROOT, 'media', f), path.join(dir, f));
   fs.writeFileSync(path.join(dir, 'index.html'), `<!DOCTYPE html><html><head><meta charset="utf-8">
 <link rel="stylesheet" href="style.css"><style>body{--vscode-font-family:"DejaVu Sans",Arial,sans-serif}#hint{display:none}</style></head>
 <body>${BODY}<script>window.__posted=[];window.acquireVsCodeApi=()=>({postMessage:m=>window.__posted.push(m),getState:()=>null,setState:()=>{}});</script>
-<script src="main.js"></script></body></html>`);
+<script src="scene3d.js"></script><script src="main.js"></script></body></html>`);
+}
+
+// ---- cas 3D ----
+// WebGL logiciel + horloge simulée = capture bloquée : ces cas tournent en temps réel (real: true).
+// Pas de comparaison au pixel (les écrans s'animent) : assertions sur l'interface et contrôle « image non vide ».
+const zlvl = (p) => p.textContent('#zlvl');
+const waitZoom = async (p, txt, ms = 40000) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { if ((await zlvl(p)) === txt) return; await p.waitForTimeout(250); }
+  assert.strictEqual(await zlvl(p), txt, `zoom attendu ${txt}`);
+};
+const waitFor = async (p, fn, what, ms = 40000) => {
+  const t0 = Date.now();
+  while (Date.now() - t0 < ms) { if (await p.evaluate(fn)) return; await p.waitForTimeout(250); }
+  assert.fail(what);
+};
+const msg3d = (extra = {}) => msg(TEAM, { renderer: '3d', ...extra });
+// image non vide : assez de couleurs distinctes et une part de pixels clairs (étiquettes, écrans)
+function assertRich(shot, name) {
+  const seen = new Set(); let bright = 0;
+  for (let i = 0; i < shot.data.length; i += 4 * 7) {
+    const r = shot.data[i], g2 = shot.data[i + 1], b = shot.data[i + 2];
+    seen.add((r >> 4) << 8 | (g2 >> 4) << 4 | (b >> 4));
+    if (r + g2 + b > 600) bright++;
+  }
+  assert.ok(seen.size > 40, `${name} : rendu 3D quasi uniforme (${seen.size} couleurs)`);
+  assert.ok(bright > 30, `${name} : aucun pixel clair (étiquettes / écrans absents ?)`);
 }
 
 const cases = [
@@ -81,6 +108,54 @@ const cases = [
       await p.clock.runFor(300);
     },
   },
+  // ---- rendu 3D (WebGL logiciel, temps réel) ----
+  { name: '3d-jour', real: true, size: [1000, 560], steps: async (p) => { await send(p, msg3d()); await p.waitForTimeout(3000); await p.keyboard.press('f'); await p.waitForTimeout(2500); } },
+  {
+    name: '3d-nuit', real: true, size: [1000, 560], steps: async (p) => {
+      await send(p, msg3d({ timeOfDay: 'night' }));
+      await p.waitForTimeout(2500);
+      await p.click('[data-zone=lead]');
+      await p.waitForTimeout(3000);
+    },
+  },
+  {
+    name: '3d-zoom', real: true, size: [1000, 560], steps: async (p) => {
+      await send(p, msg3d());
+      await p.waitForTimeout(2000);
+      await p.keyboard.press('0'); await waitZoom(p, '3.0×');
+      await p.click('#zin'); await p.click('#zin'); await waitZoom(p, '4.7×');
+      await p.click('#zout');
+      await waitFor(p, () => parseFloat(document.getElementById('zlvl').textContent) < 4.5, 'le bouton − dézoome en 3D');
+      await p.keyboard.press('0'); await waitZoom(p, '3.0×');
+      await p.evaluate(() => { const r = document.getElementById('zrange'); r.value = '100'; r.dispatchEvent(new Event('input')); });
+      await waitZoom(p, '10×');
+      await p.mouse.move(500, 300);
+      await p.mouse.wheel(0, 300);
+      await waitFor(p, () => document.getElementById('zlvl').textContent !== '10×', 'la molette dézoome en 3D');
+      await p.click('#zlvl'); await waitZoom(p, '3.0×');
+      await p.keyboard.press('f'); await p.waitForTimeout(2000);
+    },
+  },
+  {
+    name: '3d-selection-visite', real: true, size: [1000, 560], steps: async (p) => {
+      await send(p, msg3d());
+      await p.waitForTimeout(2500);
+      await p.keyboard.press('f'); await p.waitForTimeout(2500);
+      // clic sur un agent : balayage de la rangée de bureaux jusqu'à l'ouverture du panneau d'infos
+      let found = false;
+      for (let y = 230; y < 400 && !found; y += 10) for (let x = 40; x < 960 && !found; x += 12) {
+        await p.mouse.click(x, y);
+        found = await p.evaluate(() => !document.getElementById('info').hidden);
+      }
+      assert.ok(found, 'un clic sélectionne un agent en 3D');
+      await p.keyboard.press('Escape');
+      await waitFor(p, () => document.getElementById('info').hidden, 'Échap désélectionne');
+      await p.click('#visit');
+      await waitFor(p, () => document.getElementById('visit').classList.contains('on'), 'mode visite actif');
+      await p.keyboard.down('ArrowUp'); await p.waitForTimeout(1500); await p.keyboard.up('ArrowUp');
+      await p.waitForTimeout(800);
+    },
+  },
 ];
 
 async function send(page, m) {
@@ -93,20 +168,25 @@ async function send(page, m) {
   fs.mkdirSync(OUT, { recursive: true });
   const dir = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'rpa-render-'));
   harness(dir);
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   let failures = 0;
   for (const c of cases) {
+    if (process.env.ONLY && !c.name.includes(process.env.ONLY)) continue;
+    const t0 = Date.now();
     const page = await browser.newPage({ viewport: { width: c.size[0], height: c.size[1] }, deviceScaleFactor: 1 });
     const errors = [];
     page.on('pageerror', (e) => errors.push(String(e)));
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
-    await page.clock.install({ time: T0 });
+    if (c.real) Object.defineProperty(page, 'clock', { value: { runFor: (ms) => page.waitForTimeout(ms) } });
+    else await page.clock.install({ time: T0 });
     await page.goto('file://' + path.join(dir, 'index.html'));
     await page.clock.runFor(100);
     await c.steps(page);
+    if (process.env.ONLY) console.log(`     ${c.name}: étapes ${Date.now() - t0} ms`);
     const shot = PNG.sync.read(await page.screenshot());
     await page.close();
     assert.deepStrictEqual(errors, [], `${c.name} : erreurs JS`);
+    if (c.real) { assertRich(shot, c.name); fs.writeFileSync(path.join(OUT, c.name + '.png'), PNG.sync.write(shot)); console.log(`ok   - ${c.name} (3D : rendu non vide, capture dans test-results/)`); continue; }
     const ref = path.join(SNAP, c.name + '.png');
     if (UPDATE || !fs.existsSync(ref)) {
       fs.writeFileSync(ref, PNG.sync.write(shot));

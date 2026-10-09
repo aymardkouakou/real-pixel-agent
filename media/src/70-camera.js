@@ -80,7 +80,6 @@ function cameraBusy() {
 function jumpTo(zone, instant) {
   if (!LAYOUT) return;
   followId = null; vel.x = vel.y = 0;
-  if (use3d) { const z = LAYOUT.zones[zone] || LAYOUT.zones.all; r3.focus(z.x + z.w / 2, z.y + z.h / 2); return; }
   if (zone === 'all') {
     const z = Math.min(cssW / LAYOUT.W, cssH / LAYOUT.H) * 0.96;
     zoomGoal = null; applyZoom(z, cssW / 2, cssH / 2);
@@ -218,9 +217,9 @@ canvas.addEventListener('dblclick', (e) => {
   // double-clic dans le vide : zoom ×2 centré sur ce point (Maj : dézoom)
   setZoom(zoomTarget() * (e.shiftKey ? 0.5 : 2), p.px, p.py);
 });
-canvas.addEventListener('wheel', (e) => {
+function onWheel(e) {
   e.preventDefault();
-  const { px, py } = screenPt(e);
+  const { px, py } = use3d ? { px: cssW / 2, py: cssH / 2 } : screenPt(e);
   const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? cssH : 1;
   const dx = e.deltaX * unit, dy = e.deltaY * unit;
   if (e.shiftKey && !e.ctrlKey) {
@@ -241,7 +240,8 @@ canvas.addEventListener('wheel', (e) => {
     // molette crantée : pas de ~15 %, animé, cumulable
     setZoom(zoomTarget() * Math.pow(1.18, -Math.sign(dy) * Math.min(3, Math.max(1, Math.abs(dy) / 100))), px, py);
   }
-}, { passive: false });
+}
+canvas.addEventListener('wheel', onWheel, { passive: false });
 canvas.addEventListener('mouseleave', () => { if (hovered) { hovered = null; dirty = true; } });
 
 const MOVE_KEYS = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'KeyZ', 'KeyQ']);
