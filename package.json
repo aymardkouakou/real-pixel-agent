@@ -2,7 +2,7 @@
   "name": "real-pixel-agent",
   "displayName": "Real Pixel Agent",
   "description": "Un campus en pixel art où chaque session Claude Code est un personnage : bureau du lead, open space, salle de plan, lounge, annexe. Suivi exact via les hooks Claude Code.",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "publisher": "aymard",
   "license": "MIT",
   "repository": {
