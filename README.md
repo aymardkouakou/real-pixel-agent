@@ -89,6 +89,8 @@ Temps passé par agent et par état, jour par jour sur 7 jours, avec indicateurs
 
 ## Développement
 
+Node 20 requis (`nvm use` lit `.nvmrc`). F5 dans VS Code compile puis lance l'extension dans une fenêtre de développement.
+
 ```bash
 npm install
 npm run compile        # TypeScript + assemblage du webview (media/src -> media/main.js)

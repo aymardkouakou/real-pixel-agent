@@ -9,3 +9,5 @@ tsconfig.json
 *.vsix
 .gitignore
 .vscode/**
+.nvmrc
+.npmrc
