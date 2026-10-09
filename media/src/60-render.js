@@ -11,9 +11,13 @@ function frame(now) {
   last = now;
   if (LAYOUT) {
     step(dt);
-    updateCamera(dt);
-    const busy = dirty || cameraBusy() || anyWalking();
-    if (busy || now - lastRender > 50) { render(now); lastRender = now; dirty = false; }
+    if (!use3d) updateCamera(dt);
+    if (use3d) {
+      if (now - lastRender > 16) { render3d(now); lastRender = now; dirty = false; }
+    } else {
+      const busy = dirty || cameraBusy() || anyWalking();
+      if (busy || now - lastRender > 50) { render(now); lastRender = now; dirty = false; }
+    }
   }
   requestAnimationFrame(frame);
 }

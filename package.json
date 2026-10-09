@@ -179,6 +179,19 @@
           "default": true,
           "description": "Petit bip quand un agent demande une permission (si le campus est ouvert)."
         },
+        "realPixelAgent.renderer": {
+          "type": "string",
+          "enum": [
+            "pixel",
+            "3d"
+          ],
+          "enumDescriptions": [
+            "Pixel art 2D (par défaut).",
+            "Vue 3D expérimentale (Three.js) : glisser pour tourner, clic droit pour se déplacer, molette pour zoomer."
+          ],
+          "default": "pixel",
+          "description": "Rendu du campus. Le changement s'applique à la réouverture de la vue."
+        },
         "realPixelAgent.timeOfDay": {
           "type": "string",
           "enum": [
@@ -216,6 +229,7 @@
     "pixelmatch": "^5.3.0",
     "playwright": "^1.64.0",
     "pngjs": "^7.0.0",
+    "three": "0.186.1",
     "typescript": "^5.4.0"
   }
 }

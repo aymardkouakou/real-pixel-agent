@@ -81,6 +81,13 @@ button.on { background: #2e7d32; color: #fff; }
   touch-action: none;
   outline: none;
 }
+canvas[hidden] { display: none !important; }
+#screen3d {
+  display: block;
+  cursor: grab;
+  touch-action: none;
+  outline: none;
+}
 #empty {
   position: absolute;
   left: 50%;

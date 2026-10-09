@@ -194,6 +194,7 @@ class Hub implements vscode.Disposable {
       meetingMode: c.get<string>('meetingMode', 'all'),
       sound: c.get<boolean>('sound', true),
       timeOfDay: c.get<string>('timeOfDay', 'auto'),
+      renderer: c.get<string>('renderer', 'pixel'),
       hooks: this.hookMode(),
       workspace: vscode.workspace.name || 'Pixel HQ',
       labels: STATE_LABEL,
@@ -477,14 +478,14 @@ class Hub implements vscode.Disposable {
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data:; style-src ${webview.cspSource}; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src ${webview.cspSource} data: blob:; style-src ${webview.cspSource}; font-src ${webview.cspSource}; script-src 'nonce-${nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="stylesheet" href="${media('style.css')}">
 <title>Real Pixel Agent</title>
 </head>
 <body>
 ${BODY}
-  <script nonce="${nonce}" src="${media('main.js')}"></script>
+${this.cfg().get<string>('renderer', 'pixel') === '3d' ? `  <script nonce="${nonce}" src="${media('scene3d.js')}"></script>\n` : ''}  <script nonce="${nonce}" src="${media('main.js')}"></script>
 </body>
 </html>`;
   }
