@@ -80,6 +80,7 @@ function cameraBusy() {
 function jumpTo(zone, instant) {
   if (!LAYOUT) return;
   followId = null; vel.x = vel.y = 0;
+  if (use3d) { const z = LAYOUT.zones[zone] || LAYOUT.zones.all; r3.focus(z.x + z.w / 2, z.y + z.h / 2); return; }
   if (zone === 'all') {
     const z = Math.min(cssW / LAYOUT.W, cssH / LAYOUT.H) * 0.96;
     zoomGoal = null; applyZoom(z, cssW / 2, cssH / 2);
@@ -102,6 +103,7 @@ function resize() {
   canvas.height = Math.round(cssH * dpr);
   canvas.style.width = cssW + 'px';
   canvas.style.height = cssH + 'px';
+  if (r3) r3.resize(cssW, cssH, dpr);
   if (zoom < zMin()) zoom = zMin();
   clampCam();
   showZoom();

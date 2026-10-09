@@ -2,6 +2,7 @@ src/**
 test/**
 scripts/**
 media/src/**
+media/src3d/**
 node_modules/**
 .github/**
 **/*.map

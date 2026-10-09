@@ -46,6 +46,7 @@ let prevStates = new Map();
 function update(msg) {
   labels = msg.labels || labels;
   meetingMode = msg.meetingMode || meetingMode;
+  setRenderer(msg.renderer);
   soundOn = msg.sound !== false;
   hookMode = msg.hooks || hookMode;
   let rebuild = false;

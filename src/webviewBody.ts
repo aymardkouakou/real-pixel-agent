@@ -23,6 +23,7 @@ export const BODY = `  <header id="bar">
   </header>
   <main id="stage">
     <canvas id="screen" tabindex="0" aria-label="Campus des agents"></canvas>
+    <canvas id="screen3d" tabindex="0" aria-label="Campus des agents (3D)" hidden></canvas>
     <div id="empty" hidden>
       Aucun agent actif. Lance <code>claude</code> dans un terminal, ou
       <button id="add2">lance un agent</button>
