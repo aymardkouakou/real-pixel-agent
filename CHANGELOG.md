@@ -1,5 +1,12 @@
 # Journal des versions
 
+## 0.5.1
+- **Rendu 3D : zoom et commandes** : la barre de zoom (−, curseur, niveau), les touches `+` `-` `0`, `F` `L` `P`, les boutons de zones, le suivi d'un agent (double-clic), le zoom par double-clic et le mode Visiter fonctionnent désormais en 3D. Le visiteur est visible dans la scène.
+- **Rendu 3D : écrans animés** : les écrans des bureaux, du lead, de la borne d'arcade et le kanban de la salle de plan reprennent les animations du rendu pixel selon l'état de l'agent.
+- **Rendu 3D : lisibilité** : étiquettes à taille constante à l'écran avec ligne d'état (survol, sélection ou zoom ≥ 3×), anneaux de survol et de sélection, bulles qui pulsent, étoile du lead.
+- **Rendu 3D : décor** : parquet, carrelage, tapis, claviers, plantes animées, rendu cinéma. Les lampes de bureau ne pèsent plus sur le rendu de jour.
+- **Outillage** : cas de test 3D (jour, nuit, zoom, sélection et visite).
+
 ## 0.5.0
 - **Rendu 3D expérimental** (Three.js) : réglage `realPixelAgent.renderer` (`pixel` par défaut, `3d`). Bureaux, salles vitrées, personnages animés, bulles d'état et ambiances jour / coucher de soleil / nuit. Glisser pour tourner, clic droit pour se déplacer, molette pour zoomer, clic sur un agent pour le sélectionner. Le changement de rendu recharge la vue immédiatement. Pas encore en 3D : visite, suivi d'un agent, minimap.
 - **Outillage** : captures de test régénérées pour Playwright 1.64.
