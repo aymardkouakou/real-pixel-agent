@@ -1,5 +1,8 @@
 # Journal des versions
 
+## 0.4.1
+- **Outillage** : Node 22 (`.nvmrc`, CI) ; mise à jour de `@vscode/vsce` 4, `esbuild` 0.28 et `playwright` 1.64.
+
 ## 0.4.0
 - **Hooks Claude Code** (commande « Installer les hooks ») : permissions exactes (`PermissionRequest`), fin de tour, mode plan (`permission_mode`), fermeture de session, et lien automatique agent ↔ terminal par PID. Hooks asynchrones : ils ne ralentissent ni ne modifient Claude. Sans hooks, l'estimation par transcription reste active.
 - **Scanner** : surveillance des fichiers (réaction immédiate) avec scan de secours toutes les 5 s, réévaluation des états sans I/O chaque seconde, lecture incrémentale des transcriptions (seuls les octets ajoutés).

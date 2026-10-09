@@ -4,3 +4,4 @@ media/main.js
 *.vsix
 test-results/
 release-notes.md
+.history/

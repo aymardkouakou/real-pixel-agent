@@ -211,10 +211,10 @@
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
-    "@vscode/vsce": "^3.2.0",
-    "esbuild": "^0.24.2",
+    "@vscode/vsce": "^4.0.0",
+    "esbuild": "^0.28.2",
     "pixelmatch": "^5.3.0",
-    "playwright": "1.48",
+    "playwright": "^1.64.0",
     "pngjs": "^7.0.0",
     "typescript": "^5.4.0"
   }
