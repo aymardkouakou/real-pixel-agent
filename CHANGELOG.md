@@ -1,5 +1,9 @@
 # Journal des versions
 
+## 0.5.0
+- **Rendu 3D expérimental** (Three.js) : réglage `realPixelAgent.renderer` (`pixel` par défaut, `3d`). Bureaux, salles vitrées, personnages animés, bulles d'état et ambiances jour / coucher de soleil / nuit. Glisser pour tourner, clic droit pour se déplacer, molette pour zoomer, clic sur un agent pour le sélectionner. Le changement de rendu recharge la vue immédiatement. Pas encore en 3D : visite, suivi d'un agent, minimap.
+- **Outillage** : captures de test régénérées pour Playwright 1.64.
+
 ## 0.4.2
 - **Salle de plan en mode auto** : un agent qui lance un skill de planification (`writing-plans`, `brainstorming`…) ou écrit un fichier « plan » rejoint la salle de plan, même sans mode plan.
 
