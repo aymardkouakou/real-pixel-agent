@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+
+permissions:
+  contents: write   # création de la release sur les tags v*
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+      - run: npm run compile
+
+      - name: Tests unitaires et test de fumée
+        run: npm test
+
+      - name: Navigateur pour les tests de rendu
+        run: npx playwright install --with-deps chromium
+
+      # Non bloquant au départ : le rendu du texte peut différer légèrement entre machines.
+      # Une fois les références régénérées sur la CI (UPDATE_SNAPSHOTS=1), retirer continue-on-error.
+      - name: Tests de rendu (captures de référence)
+        run: npm run test:render
+        continue-on-error: true
+
+      - name: Captures en échec
+        if: always() && hashFiles('test-results/*.png') != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: test-results/
+
+      - name: Paquet .vsix
+        run: npx vsce package
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: '*.vsix'
+
+      - name: Vérification du tag et notes de version
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          PKG="v$(node -p "require('./package.json').version")"
+          if [ "$PKG" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::Le tag ${GITHUB_REF_NAME} ne correspond pas à la version du package.json (${PKG})"
+            exit 1
+          fi
+          node scripts/release-notes.js "${GITHUB_REF_NAME}" > release-notes.md
+
+      - name: Publication de la release GitHub (tags v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Real Pixel Agent ${{ github.ref_name }}
+          body_path: release-notes.md
+          files: '*.vsix'
+          fail_on_unmatched_files: true

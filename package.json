@@ -1,0 +1,221 @@
+{
+  "name": "real-pixel-agent",
+  "displayName": "Real Pixel Agent",
+  "description": "Un campus en pixel art où chaque session Claude Code est un personnage : bureau du lead, open space, salle de plan, lounge, annexe. Suivi exact via les hooks Claude Code.",
+  "version": "0.4.0",
+  "publisher": "aymard",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aymardkouakou/real-pixel-agent.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aymardkouakou/real-pixel-agent/issues"
+  },
+  "homepage": "https://github.com/aymardkouakou/real-pixel-agent#readme",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Visualization",
+    "Other"
+  ],
+  "keywords": [
+    "claude",
+    "claude code",
+    "agents",
+    "pixel art"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "panel": [
+        {
+          "id": "realPixelAgent",
+          "title": "Real Pixel Agent",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "realPixelAgent": [
+        {
+          "type": "webview",
+          "id": "realPixelAgent.office",
+          "name": "Bureau"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "realPixelAgent.open",
+        "title": "Ouvrir le campus dans un onglet",
+        "category": "Real Pixel Agent",
+        "icon": "$(link-external)"
+      },
+      {
+        "command": "realPixelAgent.newAgent",
+        "title": "Nouvel agent Claude",
+        "category": "Real Pixel Agent",
+        "icon": "$(add)"
+      },
+      {
+        "command": "realPixelAgent.journal",
+        "title": "Journal de la journée",
+        "category": "Real Pixel Agent",
+        "icon": "$(graph)"
+      },
+      {
+        "command": "realPixelAgent.exportJournal",
+        "title": "Exporter le journal (CSV)",
+        "category": "Real Pixel Agent"
+      },
+      {
+        "command": "realPixelAgent.installHooks",
+        "title": "Installer les hooks Claude Code (suivi exact)",
+        "category": "Real Pixel Agent"
+      },
+      {
+        "command": "realPixelAgent.uninstallHooks",
+        "title": "Retirer les hooks Claude Code",
+        "category": "Real Pixel Agent"
+      },
+      {
+        "command": "realPixelAgent.refresh",
+        "title": "Rafraîchir",
+        "category": "Real Pixel Agent",
+        "icon": "$(refresh)"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "realPixelAgent.newAgent",
+          "when": "view == realPixelAgent.office",
+          "group": "navigation@1"
+        },
+        {
+          "command": "realPixelAgent.journal",
+          "when": "view == realPixelAgent.office",
+          "group": "navigation@2"
+        },
+        {
+          "command": "realPixelAgent.open",
+          "when": "view == realPixelAgent.office",
+          "group": "navigation@3"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Real Pixel Agent",
+      "properties": {
+        "realPixelAgent.projectsDir": {
+          "type": "string",
+          "default": "",
+          "description": "Dossier des transcriptions Claude Code. Vide = $CLAUDE_CONFIG_DIR/projects ou ~/.claude/projects."
+        },
+        "realPixelAgent.onlyCurrentWorkspace": {
+          "type": "boolean",
+          "default": true,
+          "description": "N'afficher que les sessions lancées dans les dossiers du workspace ouvert (ou leurs sous-dossiers)."
+        },
+        "realPixelAgent.activeWindowMinutes": {
+          "type": "number",
+          "default": 20,
+          "minimum": 1,
+          "description": "Une session sans activité depuis plus longtemps quitte le bureau."
+        },
+        "realPixelAgent.permissionDelaySeconds": {
+          "type": "number",
+          "default": 8,
+          "minimum": 2,
+          "description": "Sans hooks uniquement : un outil sans résultat depuis plus longtemps est affiché comme « attend une permission » (×4 pour Bash, ×2 pour le web)."
+        },
+        "realPixelAgent.notifyOnPermission": {
+          "type": "boolean",
+          "default": true,
+          "description": "Notifier quand un agent attend une permission et que le campus n'est pas visible."
+        },
+        "realPixelAgent.scale": {
+          "type": "number",
+          "default": 3,
+          "minimum": 0.5,
+          "maximum": 10,
+          "description": "Zoom initial du campus (molette, pincement ou curseur pour le changer)."
+        },
+        "realPixelAgent.meetingMode": {
+          "type": "string",
+          "enum": [
+            "all",
+            "team"
+          ],
+          "enumDescriptions": [
+            "Tous les agents rejoignent la salle de plan dès qu'un plan est en rédaction.",
+            "Seuls l'agent qui planifie et ses sous-agents rejoignent la salle."
+          ],
+          "default": "all",
+          "description": "Qui rejoint la salle de planification."
+        },
+        "realPixelAgent.claudeCommand": {
+          "type": "string",
+          "default": "claude",
+          "description": "Commande lancée par « Nouvel agent »."
+        },
+        "realPixelAgent.useHooks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Utiliser les hooks Claude Code quand ils sont installés (permissions exactes, mode plan, terminal de chaque agent). Sinon, l'état est estimé à partir des transcriptions."
+        },
+        "realPixelAgent.showOtherWorkspaces": {
+          "type": "boolean",
+          "default": false,
+          "description": "Afficher aussi, dans un bâtiment annexe, les agents des autres projets (avec onlyCurrentWorkspace activé)."
+        },
+        "realPixelAgent.sound": {
+          "type": "boolean",
+          "default": true,
+          "description": "Petit bip quand un agent demande une permission (si le campus est ouvert)."
+        },
+        "realPixelAgent.timeOfDay": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "day",
+            "sunset",
+            "night"
+          ],
+          "enumDescriptions": [
+            "Selon l'heure réelle",
+            "Toujours de jour",
+            "Coucher de soleil",
+            "Nuit (lampes de bureau)"
+          ],
+          "default": "auto",
+          "description": "Ambiance lumineuse du campus."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "tsc -p . && node scripts/build-webview.js --prod",
+    "compile": "tsc -p . && node scripts/build-webview.js",
+    "watch": "node scripts/build-webview.js --watch & tsc -watch -p .",
+    "test": "node test/scanner.test.js && node test/hooks.test.js && node test/extension.smoke.js",
+    "test:render": "node test/render.test.js",
+    "package": "vsce package",
+    "release": "node scripts/release.js"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.2.0",
+    "esbuild": "^0.24.2",
+    "pixelmatch": "^5.3.0",
+    "playwright": "1.48",
+    "pngjs": "^7.0.0",
+    "typescript": "^5.4.0"
+  }
+}

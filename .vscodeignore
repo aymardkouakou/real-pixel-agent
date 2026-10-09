@@ -1,0 +1,10 @@
+src/**
+test/**
+scripts/**
+media/src/**
+node_modules/**
+.github/**
+**/*.map
+tsconfig.json
+*.vsix
+.gitignore
