@@ -41,6 +41,7 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('realPixelAgent.journal', () => hub.showJournal()),
     vscode.commands.registerCommand('realPixelAgent.exportJournal', () => hub.exportJournal()),
     vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration('realPixelAgent.renderer')) hub.reloadViews();
       if (e.affectsConfiguration('realPixelAgent')) { hub.setupWatchers(); hub.refresh(true); }
     }),
   );
@@ -247,6 +248,11 @@ class Hub implements vscode.Disposable {
   // -------------------------------------------------------------------------
   // Webviews
   // -------------------------------------------------------------------------
+  /** Le rendu (pixel / 3D) change les scripts chargés : on recharge les vues ouvertes. */
+  reloadViews() {
+    for (const w of this.webviews) w.html = this.html(w);
+  }
+
   attach(webview: vscode.Webview, host: vscode.WebviewView | vscode.WebviewPanel) {
     const media = vscode.Uri.joinPath(this.ctx.extensionUri, 'media');
     webview.options = { enableScripts: true, localResourceRoots: [media] };
