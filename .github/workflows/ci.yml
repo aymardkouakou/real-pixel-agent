@@ -1,13 +1,18 @@
 name: CI
 
+# Tests + paquet .vsix à chaque push et pull request.
+# Release automatique : sur main (ou via « Run workflow »), si la version du package.json
+# n'a pas encore de release GitHub, le job « release » crée le tag vX.Y.Z et publie la
+# release avec les notes du CHANGELOG et le .vsix. Pousser un tag vX.Y.Z fonctionne aussi.
 on:
   push:
     branches: [main]
     tags: ['v*']
   pull_request:
+  workflow_dispatch:
 
 permissions:
-  contents: write   # création de la release sur les tags v*
+  contents: write   # création du tag et de la release
 
 jobs:
   build:
@@ -50,21 +55,41 @@ jobs:
           name: vsix
           path: '*.vsix'
 
-      - name: Vérification du tag et notes de version
-        if: startsWith(github.ref, 'refs/tags/v')
+  release:
+    needs: build
+    if: github.event_name != 'pull_request' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Version à publier
+        id: v
         run: |
-          PKG="v$(node -p "require('./package.json').version")"
-          if [ "$PKG" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::Le tag ${GITHUB_REF_NAME} ne correspond pas à la version du package.json (${PKG})"
+          VERSION="v$(node -p "require('./package.json').version")"
+          if [[ "${GITHUB_REF}" == refs/tags/v* && "${GITHUB_REF_NAME}" != "${VERSION}" ]]; then
+            echo "::error::Le tag ${GITHUB_REF_NAME} ne correspond pas à la version du package.json (${VERSION})"
             exit 1
           fi
-          node scripts/release-notes.js "${GITHUB_REF_NAME}" > release-notes.md
+          if gh release view "${VERSION}" >/dev/null 2>&1; then
+            echo "Release ${VERSION} déjà publiée : rien à faire."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
-      - name: Publication de la release GitHub (tags v*)
-        if: startsWith(github.ref, 'refs/tags/v')
-        uses: softprops/action-gh-release@v2
+      - uses: actions/download-artifact@v4
+        if: steps.v.outputs.publish == 'true'
         with:
-          name: Real Pixel Agent ${{ github.ref_name }}
-          body_path: release-notes.md
-          files: '*.vsix'
-          fail_on_unmatched_files: true
+          name: vsix
+
+      - name: Publication de la release
+        if: steps.v.outputs.publish == 'true'
+        run: |
+          node scripts/release-notes.js "${{ steps.v.outputs.version }}" > release-notes.md
+          gh release create "${{ steps.v.outputs.version }}" ./*.vsix \
+            --target "${GITHUB_SHA}" \
+            --title "Real Pixel Agent ${{ steps.v.outputs.version }}" \
+            --notes-file release-notes.md

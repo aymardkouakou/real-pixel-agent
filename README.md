@@ -111,7 +111,8 @@ npm run package        # .vsix
 
 1. Ajoute une section `## x.y.z` en tête de `CHANGELOG.md` et commite-la.
 2. Lance `npm run release -- patch` (ou `minor`, `major`, `x.y.z`), avec `--push` pour pousser directement.
-3. Le tag `vx.y.z` déclenche la CI :
-   - elle vérifie que le tag correspond au `package.json` ;
-   - elle lance les tests et construit le `.vsix` ;
-   - elle publie la release GitHub avec les notes du CHANGELOG et le `.vsix` en pièce jointe.
+3. Sur `main`, la CI :
+   - lance les tests et construit le `.vsix` ;
+   - si la version du `package.json` n'a pas encore de release, crée le tag `vx.y.z` et publie la release GitHub, avec les notes du CHANGELOG et le `.vsix` en pièce jointe.
+
+Le bouton « Run workflow » de l'onglet Actions relance cette publication. Pousser soi-même un tag `vx.y.z` fonctionne aussi : la CI vérifie alors qu'il correspond au `package.json`.

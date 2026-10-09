@@ -1,7 +1,7 @@
 // Prépare une version : npm run release -- <patch|minor|major|x.y.z> [--push]
-// 1. calcule la nouvelle version  2. vérifie l'entrée du CHANGELOG
-// 3. met à jour package.json / package-lock.json  4. commit + tag vX.Y.Z  5. (--push) pousse branche et tag
-// Le push du tag déclenche la CI, qui teste, empaquette et publie la release GitHub avec le .vsix.
+// 1. calcule la nouvelle version   2. vérifie la section correspondante du CHANGELOG
+// 3. met à jour package.json / package-lock.json   4. commit « Version x.y.z »
+// 5. (--push) pousse main : la CI teste, empaquette, crée le tag vx.y.z et publie la release.
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -19,20 +19,18 @@ const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'))
 const [M, m, p] = pkg.version.split('.').map(Number);
 const next = { patch: `${M}.${m}.${p + 1}`, minor: `${M}.${m + 1}.0`, major: `${M + 1}.0.0` }[arg] || arg;
 if (!/^\d+\.\d+\.\d+$/.test(next)) fail(`version invalide : ${next}`);
+if (next === pkg.version) fail(`la version est déjà ${next}`);
 
 if (run('git status --porcelain')) fail('des modifications ne sont pas commitées');
-if (run(`git tag -l v${next}`)) fail(`le tag v${next} existe déjà`);
-try { run(`node scripts/release-notes.js ${next}`); } catch { fail(`ajoute d'abord une section « ## ${next} » dans CHANGELOG.md (et commite-la)`); }
+try { run(`node scripts/release-notes.js ${next}`); } catch { fail(`ajoute d'abord une section « ## ${next} » en tête de CHANGELOG.md (et commite-la)`); }
 
-run(`npm version ${next} --no-git-tag-version --allow-same-version`);
+run(`npm version ${next} --no-git-tag-version`);
 run('git add package.json package-lock.json');
 run(`git commit -m "Version ${next}"`);
-run(`git tag -a v${next} -m "Version ${next}"`);
-console.log(`✓ version ${next} : commit et tag v${next} créés`);
+console.log(`✓ version ${next} commitée`);
 if (push) {
-  run('git push origin HEAD');
-  run(`git push origin v${next}`);
-  console.log('✓ poussé : la CI publie la release dans quelques minutes');
+  run('git push origin HEAD:main');
+  console.log(`✓ poussé sur main : la CI publiera la release v${next} si les tests passent`);
 } else {
-  console.log(`→ pour publier : git push origin HEAD && git push origin v${next}`);
+  console.log('→ pour publier : git push origin main');
 }
