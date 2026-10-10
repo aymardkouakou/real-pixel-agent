@@ -1,7 +1,7 @@
 # Journal des versions
 
 ## 0.5.3
-- Hide sessions of sibling projects sharing a name prefix with the workspace
+- **Correctif : sessions d'autres projets** : avec `onlyCurrentWorkspace`, les sessions d'un projet voisin dont le nom commence comme le workspace (ex. `app` et `app-admin`) apparaissaient dans le campus. Le dossier réel (`cwd`) de chaque session est maintenant vérifié : seuls le workspace et ses sous-dossiers sont affichés, les autres projets vont dans l'annexe si `showOtherWorkspaces` est activé.
 
 ## 0.5.2
 - **Rendu 3D : caméra de suivi** : en suivi ou en mode Visiter, la caméra se place derrière l'agent, regarde dans sa direction et tourne avec lui (glisser pour décaler la vue). Elle se rapproche quand un mur la masque, et les bulles proches de la caméra rétrécissent.
