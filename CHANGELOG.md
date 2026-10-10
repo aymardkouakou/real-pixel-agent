@@ -1,5 +1,8 @@
 # Journal des versions
 
+## 0.5.3
+- Hide sessions of sibling projects sharing a name prefix with the workspace
+
 ## 0.5.2
 - **Rendu 3D : caméra de suivi** : en suivi ou en mode Visiter, la caméra se place derrière l'agent, regarde dans sa direction et tourne avec lui (glisser pour décaler la vue). Elle se rapproche quand un mur la masque, et les bulles proches de la caméra rétrécissent.
 - **Rendu 3D : expérimental** : le réglage `renderer` est signalé comme expérimental, avec la configuration matérielle recommandée dans le README. Les salles sont éclairées la nuit.
