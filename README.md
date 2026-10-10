@@ -136,10 +136,16 @@ npm run package        # .vsix
 
 ## Publier une version
 
-1. Ajoute une section `## x.y.z` en tête de `CHANGELOG.md` et commite-la.
-2. Lance `npm run release -- patch` (ou `minor`, `major`, `x.y.z`), avec `--push` pour pousser directement.
-3. Sur `main`, la CI :
+1. Commite tes changements (l'arbre git doit être propre).
+2. Lance `npm run package` (ou `npm run package -- minor`, `major`, `x.y.z`). La commande :
+   - ajoute une section `## x.y.z` en tête de `CHANGELOG.md` à partir des commits depuis la dernière version (si la section existe déjà, elle est conservée), et la commite ;
+   - met à jour la version dans `package.json` / `package-lock.json` et commite « Version x.y.z » ;
+   - construit le `.vsix`.
+   Relis la section ajoutée au CHANGELOG ; pour la corriger, amende le commit « Changelog x.y.z » avant de pousser. `--dry-run` montre la version et la section sans rien modifier.
+3. Pousse `main` (`git push origin main`, ou ajoute `--push` à l'étape 2). Sur `main`, la CI :
    - lance les tests et construit le `.vsix` ;
    - si la version du `package.json` n'a pas encore de release, crée le tag `vx.y.z` et publie la release GitHub, avec les notes du CHANGELOG et le `.vsix` en pièce jointe.
+
+`npm run package:dev` construit un `.vsix` de test sans toucher à la version ni au CHANGELOG. `npm run release -- <version>` reste disponible pour n'exécuter que l'étape de version.
 
 Le bouton « Run workflow » de l'onglet Actions relance cette publication. Pousser soi-même un tag `vx.y.z` fonctionne aussi : la CI vérifie alors qu'il correspond au `package.json`.

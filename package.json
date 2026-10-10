@@ -218,7 +218,8 @@
     "watch": "node scripts/build-webview.js --watch & tsc -watch -p .",
     "test": "node test/scanner.test.js && node test/hooks.test.js && node test/extension.smoke.js",
     "test:render": "node test/render.test.js",
-    "package": "vsce package",
+    "package": "node scripts/package.js",
+    "package:dev": "vsce package",
     "release": "node scripts/release.js"
   },
   "devDependencies": {
