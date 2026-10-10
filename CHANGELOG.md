@@ -1,5 +1,9 @@
 # Journal des versions
 
+## 0.5.5
+- Show real session titles, delegation and finished counts; make render test deterministic
+- Add project CLAUDE.md
+
 ## 0.5.4
 - Make hook removal reversible and clean up on uninstall
 
