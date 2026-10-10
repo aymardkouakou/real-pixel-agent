@@ -12,3 +12,8 @@ tsconfig.json
 .vscode/**
 .nvmrc
 .npmrc
+.remember/**
+.claude/**
+.history/**
+test-results/**
+real-pixel-agent-*.vsix

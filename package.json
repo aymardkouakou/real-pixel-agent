@@ -231,5 +231,9 @@
     "pngjs": "^7.0.0",
     "three": "0.186.1",
     "typescript": "^5.4.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "@vscode/vsce-sign": false
   }
 }
