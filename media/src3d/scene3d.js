@@ -287,6 +287,73 @@ function create(canvas) {
     );
     camera.lookAt(orbit.tx, orbit.ty, orbit.tz);
   }
+  // caméra de suivi : se place derrière l'agent, regarde dans sa direction et tourne avec lui.
+  // Modes : 'free' (orbite libre) -> 'chase' (suivi) -> 'return' (retour progressif à l'orbite libre).
+  const occluders = [];
+  const ray = new THREE.Raycaster();
+  const chase = {
+    mode: 'free', id: null, lastT: 0,
+    tx: 0, ty: 0, tz: 0, az: 0, pol: 1, dist: 20, lx: 0, ly: 0, lz: 0,   // état lissé de la caméra
+    offAz: 0, offPol: 0,                                                  // décalage choisi par l'utilisateur (glisser)
+  };
+  const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+  const ease = (rate, dt) => 1 - Math.exp(-rate * dt);
+  function placeChase() {
+    const sp = Math.sin(chase.pol), cp = Math.cos(chase.pol);
+    camera.position.set(chase.tx + chase.dist * sp * Math.sin(chase.az), chase.ty + chase.dist * cp, chase.tz + chase.dist * sp * Math.cos(chase.az));
+    camera.lookAt(chase.lx, chase.ly, chase.lz);
+  }
+  function updateChase(f) {
+    const dt = Math.min(0.1, Math.max(0.001, (f.t - chase.lastT) / 1000));
+    chase.lastT = f.t;
+    const ch = f.follow ? chars.get(f.follow) : null;
+    if (ch && chase.mode !== 'chase') {
+      if (chase.mode === 'free') {          // départ : on part de la vue actuelle, sans saut
+        chase.tx = orbit.tx; chase.ty = orbit.ty; chase.tz = orbit.tz; chase.az = orbit.az; chase.pol = orbit.pol; chase.dist = orbit.dist;
+        chase.lx = orbit.tx; chase.ly = orbit.ty; chase.lz = orbit.tz;
+      }
+      if (chase.id !== f.follow) { chase.offAz = 0; chase.offPol = 0; }
+      chase.mode = 'chase'; chase.id = f.follow;
+    }
+    if (chase.mode === 'chase' && !ch) {    // fin du suivi : on rend la main à l'orbite à partir de la vue courante
+      orbit.az = chase.az; orbit.pol = chase.pol;
+      chase.mode = 'return'; chase.id = null;
+    }
+    if (chase.mode === 'free') return false;
+
+    if (chase.mode === 'chase') {
+      const m = ch.model, yaw = m.rotation.y;
+      const px = ch.group.position.x, pz = ch.group.position.z;
+      const fx = Math.sin(yaw), fz = Math.cos(yaw);
+      const head = ch.group.position.y + 2.0;
+      const wantAz = yaw + Math.PI + chase.offAz;
+      const wantPol = Math.max(0.35, Math.min(1.4, 1.05 + chase.offPol));
+      let wantDist = Math.max(11, Math.min(70, orbit.dist * 0.6));
+      // un mur entre l'agent et la caméra : on rapproche la caméra juste avant le mur
+      const sp = Math.sin(chase.pol), cp = Math.cos(chase.pol);
+      const origin = new THREE.Vector3(chase.tx, chase.ty, chase.tz);
+      ray.set(origin, new THREE.Vector3(sp * Math.sin(chase.az), cp, sp * Math.cos(chase.az)).normalize());
+      ray.far = wantDist;
+      const hit = ray.intersectObjects(occluders, false)[0];
+      if (hit) wantDist = Math.max(2.5, hit.distance - 0.6);
+      const kp = ease(9, dt), ka = ease(3.2, dt), kd = ease(wantDist < chase.dist ? 14 : 4, dt);
+      chase.tx += (px - chase.tx) * kp; chase.ty += (head - 0.6 - chase.ty) * kp; chase.tz += (pz - chase.tz) * kp;
+      chase.az += wrap(wantAz - chase.az) * ka;
+      chase.pol += (wantPol - chase.pol) * kd; chase.dist += (wantDist - chase.dist) * kd;
+      // le regard porte un peu devant l'agent : on voit où il va
+      chase.lx += (px + fx * 2.4 - chase.lx) * kp; chase.ly += (head - chase.ly) * kp; chase.lz += (pz + fz * 2.4 - chase.lz) * kp;
+      placeChase();
+      return true;
+    }
+    // retour progressif vers l'orbite libre (cible et distance fournies par l'interface)
+    const k = ease(7, dt);
+    chase.tx += (orbit.tx - chase.tx) * k; chase.ty += (orbit.ty - chase.ty) * k; chase.tz += (orbit.tz - chase.tz) * k;
+    chase.az += wrap(orbit.az - chase.az) * k; chase.pol += (orbit.pol - chase.pol) * k; chase.dist += (orbit.dist - chase.dist) * k;
+    chase.lx = chase.tx; chase.ly = chase.ty; chase.lz = chase.tz;
+    placeChase();
+    if (Math.hypot(orbit.tx - chase.tx, orbit.tz - chase.tz) + Math.abs(orbit.dist - chase.dist) < 0.15) { chase.mode = 'free'; applyCamera(); return false; }
+    return true;
+  }
   let drag = null;
   let onSelect = () => {};
   let onPan = null, onWheel = null, onDouble = null, onHover = null;
@@ -300,6 +367,7 @@ function create(canvas) {
     const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
     if (Math.abs(dx) + Math.abs(dy) > 3) drag.moved = true;
     drag.x = e.clientX; drag.y = e.clientY;
+    if (drag.button === 0 && chase.mode === 'chase') { chase.offAz -= dx * 0.006; chase.offPol -= dy * 0.005; chase.offPol = Math.max(-0.7, Math.min(0.3, chase.offPol)); return; }
     if (drag.button === 0) { orbit.az -= dx * 0.006; orbit.pol -= dy * 0.005; }
     else {
       const k = orbit.dist * 0.0016;
@@ -432,6 +500,10 @@ function create(canvas) {
       leaf.geometry = leaf.geometry.clone(); leaf.geometry.translate(0, 0.5, 0); leaf.position.y = 0.8;   // pivot au pied
       sway.push(leaf);
     }
+
+    // murs pleins (hauts, opaques) : la caméra de suivi ne doit pas passer à travers
+    occluders.length = 0;
+    world.traverse((o) => { if (o.isMesh && o.scale.y >= 2.4 && !o.material.transparent) occluders.push(o); });
 
     if (!orbitInit) {
       orbit.tx = Math.min(W, c.MAIN_W * S) / 2; orbit.tz = (c.ROOM_BOTTOM - 8) * S; orbit.dist = 52; orbit.az = 0; orbit.pol = 0.9;
@@ -568,7 +640,11 @@ function create(canvas) {
         const pulse = a.state === 'permission' || a.state === 'waiting';
         ch.bubble.position.set(0.9, 3.6 + Math.sin(t * 3) * 0.12 + (a.state === 'sleeping' ? Math.sin(t * 1.3) * 0.2 : 0), 0);
         const k = pulse ? 1 + Math.max(0, Math.sin(t * 6)) * 0.14 : 1;
-        ch.bubble.scale.set(1.5 * k, 1.5 * k, 1);
+        // bulle réduite (puis masquée) quand elle est près de la caméra : pas de bulle géante au premier plan
+        const dcam = camera.position.distanceTo(ch.group.position);
+        const nf = Math.min(1, Math.max(0.3, dcam / 22));
+        ch.bubble.visible = dcam > 4;
+        ch.bubble.scale.set(1.5 * k * nf, 1.5 * k * nf, 1);
         if (a.state === 'sleeping') ch.bubble.material.opacity = 0.65 + Math.sin(t * 1.3) * 0.3;
       }
       ch.label.position.set(0, 4.1 + (ch.bubble ? 1.5 : 0) + (ch.star ? 0.2 : 0), 0);
@@ -579,6 +655,7 @@ function create(canvas) {
   return {
     render(f) {
       sync(f);
+      updateChase(f);
       renderer.render(scene, camera);
     },
     resize(w, h, dpr) {

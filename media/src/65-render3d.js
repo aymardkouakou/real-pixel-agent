@@ -61,7 +61,7 @@ function render3d(t) {
   r3.setZoom(zoom);
   r3.focus(cam.x + cssW / zoom / 2, cam.y + cssH / zoom / 2);
   r3.render({
-    t, actors: list, layout: LAYOUT, phase: phase(), selected, hovered, zoom, gathering, showLabels: true, paintScreen: paintScreen3d,
+    t, follow: visitMode ? VISITOR_ID : followId, actors: list, layout: LAYOUT, phase: phase(), selected, hovered, zoom, gathering, showLabels: true, paintScreen: paintScreen3d,
     consts: { MAIN_W, ROOM_TOP, ROOM_BOTTOM, OPEN, ANNEX, LEAD, WAR, LOUNGE, OPEN_ROWS, ANNEX_ROWS, deskSlot, annexSlot, meet: LAYOUT.meet },
   });
 }
