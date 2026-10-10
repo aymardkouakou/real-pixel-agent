@@ -469,7 +469,10 @@ class Hub implements vscode.Disposable {
       const s = readSettings(file);
       if (hooksStatus(s) === 'none') { vscode.window.showInformationMessage('Aucun hook Real Pixel Agent à retirer.'); return; }
       writeSettings(removeHooks(s), file);
+      try { fs.rmSync(this.scriptPath(), { force: true }); } catch { /* ignore */ }
+      this.ctx.globalState.update('rpa.hooksPromptDone', true); // pas de ré-offre juste après un retrait volontaire
       vscode.window.showInformationMessage('Hooks Real Pixel Agent retirés. Tes autres hooks sont intacts.');
+      this.setupWatchers();
       this.refresh(true);
     } catch (err: any) {
       vscode.window.showErrorMessage(`Désinstallation impossible : ${err?.message || err}`);
@@ -498,6 +501,7 @@ ${this.cfg().get<string>('renderer', 'pixel') === '3d' ? `  <script nonce="${non
 
   dispose() {
     clearInterval(this.timer);
+    if (this.debounce) { clearTimeout(this.debounce); this.debounce = undefined; }
     for (const w of this.watchers) { try { w.close(); } catch { /* ignore */ } }
     this.journal.flush();
     this.status.dispose();

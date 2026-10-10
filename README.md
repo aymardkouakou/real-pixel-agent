@@ -9,7 +9,7 @@ Un campus en pixel art dans VS Code, façon bureaux de la Silicon Valley : chaqu
 Télécharge le `.vsix` de la dernière [release](https://github.com/aymardkouakou/real-pixel-agent/releases), puis :
 
 ```bash
-code --install-extension real-pixel-agent-0.4.0.vsix
+code --install-extension real-pixel-agent-x.y.z.vsix
 ```
 
 Panneau du bas → onglet **Real Pixel Agent**, ou commande **Real Pixel Agent : Ouvrir le campus dans un onglet**.
@@ -114,7 +114,7 @@ Pour rester fluide :
 
 ## Développement
 
-Node 20 requis (`nvm use` lit `.nvmrc`). F5 dans VS Code compile puis lance l'extension dans une fenêtre de développement.
+Node 22 requis (`nvm use` lit `.nvmrc`). F5 dans VS Code compile puis lance l'extension dans une fenêtre de développement.
 
 ```bash
 npm install
@@ -142,7 +142,7 @@ npm run package        # .vsix
    - met à jour la version dans `package.json` / `package-lock.json` et commite « Version x.y.z » ;
    - construit le `.vsix`.
    Relis la section ajoutée au CHANGELOG ; pour la corriger, amende le commit « Changelog x.y.z » avant de pousser. `--dry-run` montre la version et la section sans rien modifier.
-3. Pousse `main` (`git push origin main`, ou ajoute `--push` à l'étape 2). Sur `main`, la CI :
+3. Pousse `main` (`git push origin main`, ou ajoute `--push` à l'étape 2). Une fois la CI réactivée (voir `.github/workflows/ci.yml`, déclenchement manuel pour l'instant), sur `main` elle :
    - lance les tests et construit le `.vsix` ;
    - si la version du `package.json` n'a pas encore de release, crée le tag `vx.y.z` et publie la release GitHub, avec les notes du CHANGELOG et le `.vsix` en pièce jointe.
 

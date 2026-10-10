@@ -213,6 +213,7 @@
     }
   },
   "scripts": {
+    "vscode:uninstall": "node ./out/uninstall.js",
     "vscode:prepublish": "tsc -p . && node scripts/build-webview.js --prod",
     "compile": "tsc -p . && node scripts/build-webview.js",
     "watch": "node scripts/build-webview.js --watch & tsc -watch -p .",

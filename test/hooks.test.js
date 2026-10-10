@@ -32,6 +32,46 @@ t('fusion dans settings.json sans toucher aux hooks existants', () => {
   assert.deepStrictEqual(removeHooks(mergeHooks({}, cmd)), {});
 });
 
+t('removeHooks réversible : cas limites', () => {
+  const cmd = hookCommand('/usr/bin/node', '/h/real-pixel-agent-hook.js', false);
+  const cases = [
+    { hooks: { Stop: [{ hooks: [] }] } },
+    { hooks: { Stop: [{ matcher: 'x', hooks: [{ type: 'command', command: 'a.sh' }, { type: 'command', command: 'b.sh' }] }] } },
+    { hooks: { Stop: 'invalide' } },
+    { a: 1, hooks: { Custom: [{ hooks: [{ type: 'command', command: 'c.sh' }] }] } },
+  ];
+  for (const c of cases) {
+    const merged = mergeHooks(c, cmd);
+    assert.deepStrictEqual(removeHooks(merged), c, JSON.stringify(c));
+    assert.deepStrictEqual(removeHooks(removeHooks(merged)), c, 'idempotent');
+    assert.deepStrictEqual(mergeHooks(merged, cmd), merged, 'merge idempotent');
+  }
+  // un événement vide qui n'a pas reçu nos hooks n'est jamais touché
+  assert.deepStrictEqual(removeHooks({ hooks: { Stop: [] } }), { hooks: { Stop: [] } });
+  assert.deepStrictEqual(removeHooks({}), {});
+});
+
+t('writeSettings atomique + désinstallation complète', () => {
+  const dir = tmp();
+  const file = path.join(dir, 'settings.json');
+  const user = { model: 'opus', hooks: { Stop: [{ hooks: [{ type: 'command', command: 'mine.sh' }] }] } };
+  fs.writeFileSync(file, JSON.stringify(user));
+  const { writeSettings, readSettings } = require('../out/hooks');
+  const script = path.join(dir, 'real-pixel-agent-hook.js');
+  fs.writeFileSync(script, '//');
+  writeSettings(mergeHooks(readSettings(file), hookCommand('/n', script, false)), file);
+  assert.ok(fs.existsSync(file + '.real-pixel-agent.bak'));
+  assert.ok(!fs.existsSync(file + '.tmp-rpa'));
+  require('../out/uninstall').cleanup(file, dir);
+  assert.deepStrictEqual(readSettings(file), user);
+  assert.ok(!fs.existsSync(script));
+  // JSON invalide : jamais écrasé
+  fs.writeFileSync(file, '{ pas du json');
+  require('../out/uninstall').cleanup(file, dir);
+  assert.strictEqual(fs.readFileSync(file, 'utf8'), '{ pas du json');
+  fs.rmSync(dir, { recursive: true, force: true });
+});
+
 t('commande avec runtime VS Code et chemins à espaces', () => {
   const c = hookCommand('/Applications/Visual Studio Code.app/Contents/MacOS/Electron', '/Users/a b/.real-pixel-agent/real-pixel-agent-hook.js', true);
   assert.ok(c.startsWith('ELECTRON_RUN_AS_NODE=1 "/Applications/Visual Studio Code.app'));

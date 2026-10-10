@@ -32,18 +32,26 @@ export function hookCommand(runtime: string, scriptPath: string, viaElectron: bo
 type Settings = Record<string, any>;
 const isOurs = (h: any) => typeof h?.command === 'string' && h.command.includes(HOOK_MARKER);
 
+/** Retire nos hooks ; ne supprime un groupe que si c'est nous qui l'avons vidé (les groupes vides de l'utilisateur restent). */
 function stripOurs(groups: any[]): any[] {
-  return groups
-    .map((g) => (g && Array.isArray(g.hooks) ? { ...g, hooks: g.hooks.filter((h: any) => !isOurs(h)) } : g))
-    .filter((g) => !g || !Array.isArray(g.hooks) || g.hooks.length > 0);
+  const out: any[] = [];
+  for (const g of groups) {
+    if (!g || !Array.isArray(g.hooks) || !g.hooks.some(isOurs)) { out.push(g); continue; }
+    const rest = g.hooks.filter((h: any) => !isOurs(h));
+    if (rest.length) out.push({ ...g, hooks: rest });
+  }
+  return out;
 }
+
+const hasOurs = (groups: any[]) => groups.some((g) => Array.isArray(g?.hooks) && g.hooks.some(isOurs));
 
 /** Ajoute (ou remplace) nos hooks sans toucher aux autres. */
 export function mergeHooks(settings: Settings, command: string): Settings {
   const s: Settings = { ...settings };
   const hooks: Record<string, any[]> = { ...(s.hooks || {}) };
   for (const ev of HOOK_EVENTS) {
-    const groups = stripOurs(Array.isArray(hooks[ev]) ? hooks[ev] : []);
+    if (hooks[ev] !== undefined && !Array.isArray(hooks[ev])) continue; // format inattendu : on ne l'écrase pas
+    const groups = stripOurs(hooks[ev] || []);
     groups.push({ hooks: [{ type: 'command', command, async: true, timeout: 10 }] });
     hooks[ev] = groups;
   }
@@ -51,16 +59,19 @@ export function mergeHooks(settings: Settings, command: string): Settings {
   return s;
 }
 
-/** Retire uniquement nos hooks. */
+/** Retire uniquement nos hooks. Un événement n'est supprimé que s'il n'est vide qu'à cause de ce retrait. */
 export function removeHooks(settings: Settings): Settings {
   const s: Settings = { ...settings };
-  if (!s.hooks || typeof s.hooks !== 'object') return s;
+  if (!s.hooks || typeof s.hooks !== 'object' || Array.isArray(s.hooks)) return s;
   const hooks: Record<string, any[]> = { ...s.hooks };
+  let touched = false;
   for (const ev of Object.keys(hooks)) {
-    if (!Array.isArray(hooks[ev])) continue;
+    if (!Array.isArray(hooks[ev]) || !hasOurs(hooks[ev])) continue;
+    touched = true;
     const g = stripOurs(hooks[ev]);
     if (g.length) hooks[ev] = g; else delete hooks[ev];
   }
+  if (!touched) return s;
   if (Object.keys(hooks).length) s.hooks = hooks; else delete s.hooks;
   return s;
 }
@@ -83,8 +94,14 @@ export function writeSettings(settings: Settings, file = claudeSettingsPath()): 
   const backup = file + '.real-pixel-agent.bak';
   if (fs.existsSync(file) && !fs.existsSync(backup)) fs.copyFileSync(file, backup);
   const tmp = file + '.tmp-rpa';
-  fs.writeFileSync(tmp, JSON.stringify(settings, null, 2) + '\n');
-  fs.renameSync(tmp, file);
+  try {
+    const mode = fs.existsSync(file) ? fs.statSync(file).mode & 0o777 : 0o644;
+    fs.writeFileSync(tmp, JSON.stringify(settings, null, 2) + '\n', { mode });
+    fs.renameSync(tmp, file);
+  } catch (err) {
+    try { fs.rmSync(tmp, { force: true }); } catch { /* ignore */ }
+    throw err;
+  }
 }
 
 // ---------------------------------------------------------------------------
