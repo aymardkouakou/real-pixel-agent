@@ -186,11 +186,11 @@
             "3d"
           ],
           "enumDescriptions": [
-            "Pixel art 2D (par défaut).",
-            "Vue 3D expérimentale (Three.js) : glisser pour tourner, clic droit pour se déplacer, molette pour zoomer."
+            "Pixel art 2D (par défaut, léger, aucun GPU requis).",
+            "EXPÉRIMENTAL — vue 3D (Three.js), demande un GPU et WebGL 2. Glisser pour tourner, clic droit pour se déplacer, molette pour zoomer."
           ],
           "default": "pixel",
-          "description": "Rendu du campus. Le changement s'applique à la réouverture de la vue."
+          "description": "Rendu du campus. Le rendu 3D est EXPÉRIMENTAL et demande un GPU (WebGL 2) : voir le README pour la configuration recommandée. Le changement s'applique immédiatement."
         },
         "realPixelAgent.timeOfDay": {
           "type": "string",

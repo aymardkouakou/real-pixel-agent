@@ -267,6 +267,7 @@ function create(canvas) {
   let layoutKey = null;
   let size = { W: 512, H: 320 };
   const lamps = [];
+  const roomLamps = [];
   const screens = new Map();       // clé -> écran animé { ctx, tex, mesh, type, ... }
   const sway = [];                 // feuillages qui bougent
   let viewH = 600;
@@ -343,7 +344,7 @@ function create(canvas) {
     world.traverse((o) => { if (o.geometry && o.geometry !== boxGeo) o.geometry.dispose(); });
     world = new THREE.Group();
     scene.add(world);
-    lamps.length = 0; sway.length = 0;
+    lamps.length = 0; roomLamps.length = 0; sway.length = 0;
     for (const sc of screens.values()) sc.tex.dispose();
     screens.clear();
     size = { W: L.W, H: L.H };
@@ -360,6 +361,9 @@ function create(canvas) {
     pbox(8, c.ROOM_BOTTOM + 8, c.OPEN.cols * c.OPEN.w + 24, L.H - c.ROOM_BOTTOM - 16, 0.1, '#6d5a47', world, 0.2, { noShadow: true, material: floorMaterial('parquet', c.OPEN.cols * c.OPEN.w + 24, L.H - c.ROOM_BOTTOM - 16) });
     // salles
     const room = (r, floor, wall) => {
+      const rl = new THREE.PointLight(0xffe2b8, 0, 60, 1.2);   // plafonnier : allumé le soir et la nuit
+      rl.position.set((r.x + r.w / 2) * S, 4.2, (r.y + r.h / 2) * S);
+      world.add(rl); roomLamps.push(rl);
       pbox(r.x, r.y, r.w, r.h, 0.1, floor, world, 0.2, { noShadow: true });
       const t = 3;
       const glass = { transparent: true, opacity: 0.28, roughness: 0.1 };
@@ -444,12 +448,13 @@ function create(canvas) {
   function ambiance(phase) {
     const night = phase === 'night', sunset = phase === 'sunset';
     scene.background = new THREE.Color(night ? '#0b1020' : sunset ? '#3b2a3f' : '#1c1f26');
-    hemi.intensity = night ? 0.35 : sunset ? 0.7 : 1.0;
-    hemi.color.set(night ? '#4a5a9a' : sunset ? '#ffb27a' : '#ffffff');
-    sun.intensity = night ? 0.25 : sunset ? 1.1 : 1.6;
+    hemi.intensity = night ? 0.8 : sunset ? 0.8 : 1.0;
+    hemi.color.set(night ? '#7b8ad0' : sunset ? '#ffb27a' : '#ffffff');
+    sun.intensity = night ? 0.5 : sunset ? 1.1 : 1.6;
     sun.color.set(night ? '#7f93ff' : sunset ? '#ff9a55' : '#fff4e0');
     sun.position.set(size.W * S * (sunset ? 0.1 : 0.7), sunset ? 18 : 70, size.H * S * (sunset ? 0.9 : 0.1));
     sun.target.position.set(size.W * S / 2, 0, size.H * S / 2);
+    for (const l of roomLamps) { l.intensity = night ? 38 : 12; l.visible = night || sunset; }
     for (const l of lamps) { l.intensity = 9; l.visible = night; }   // invisibles le jour : pas de coût de shader
   }
 

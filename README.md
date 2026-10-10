@@ -72,6 +72,7 @@ Temps passé par agent et par état, jour par jour sur 7 jours, avec indicateurs
 | `realPixelAgent.meetingMode` | `all` | `all` : tous les agents actifs en réunion ; `team` : l'équipe qui planifie |
 | `realPixelAgent.onlyCurrentWorkspace` | `true` | sessions du workspace ouvert uniquement |
 | `realPixelAgent.showOtherWorkspaces` | `false` | les autres projets dans l'annexe |
+| `realPixelAgent.renderer` | `pixel` | `pixel` : pixel art 2D ; `3d` : rendu 3D **expérimental** (voir ci-dessous) |
 | `realPixelAgent.timeOfDay` | `auto` | `auto`, `day`, `sunset`, `night` |
 | `realPixelAgent.sound` | `true` | bip à chaque nouvelle demande de permission |
 | `realPixelAgent.notifyOnPermission` | `true` | notification quand le campus n'est pas visible |
@@ -80,6 +81,30 @@ Temps passé par agent et par état, jour par jour sur 7 jours, avec indicateurs
 | `realPixelAgent.scale` | `3` | zoom initial |
 | `realPixelAgent.claudeCommand` | `claude` | commande du bouton « ＋ Agent » |
 | `realPixelAgent.projectsDir` | (vide) | dossier des transcriptions si non standard |
+
+## Rendu 3D (expérimental)
+
+> ⚠️ **Fonctionnalité expérimentale.** Le rendu 3D (Three.js) est en cours de développement : l'apparence, les commandes et les performances peuvent encore changer, et certaines fonctions du rendu pixel peuvent y manquer ou différer. Le rendu **pixel 2D reste le mode par défaut** et le mode de référence.
+
+Activation : `"realPixelAgent.renderer": "3d"` dans les réglages ; la vue se recharge aussitôt. Pour revenir au pixel art, remets `"pixel"`. Souris : glisser pour tourner, clic droit pour se déplacer, molette pour zoomer.
+
+### Matériel recommandé
+
+Le rendu 3D utilise WebGL 2 avec ombres, anti-crénelage et éclairage dynamique ; il sollicite le GPU en continu tant que la vue est visible. Ces valeurs sont indicatives (pas de mesures sur toutes les configurations) :
+
+| | Minimum (utilisable) | Recommandé (fluide) |
+|---|---|---|
+| **GPU** | graphique intégré récent (Intel Iris Xe, Apple M1, AMD Vega) | GPU dédié ou Apple Silicon M1 Pro et plus (NVIDIA GTX 1650 / RTX, AMD RX 5000+) |
+| **Mémoire** | 8 Go de RAM | 16 Go de RAM |
+| **Processeur** | 4 cœurs | 6 cœurs ou plus |
+| **Écran** | 1080p | 1440p / 4K ou Retina : la résolution est plafonnée à ×2, mais un écran dense demande un GPU dédié |
+| **Pilotes / VS Code** | VS Code ≥ 1.85, accélération matérielle activée | pilotes graphiques à jour |
+
+Pour rester fluide :
+- **Garde l'accélération matérielle** activée (VS Code : `"disable-hardware-acceleration"` ne doit pas être défini dans `argv.json`). Sans GPU, le rendu logiciel est très lent : reste alors en `pixel`.
+- Sur portable, **branche le secteur** : la 3D est plus gourmande que le pixel art, surtout avec beaucoup d'agents ou un écran 4K.
+- **Cache la vue** quand tu ne la regardes pas : le rendu s'arrête quand l'onglet est caché.
+- Pas de WebGL 2 (machine très ancienne, session distante sans GPU, SSH / conteneur) : utilise `pixel`.
 
 ## Performances
 
