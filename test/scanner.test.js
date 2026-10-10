@@ -3,7 +3,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { Scanner, parseTail, parseHead, encodeProjectPath, isPlanWork } = require('../out/scanner');
+const { Scanner, parseTail, parseHead, encodeProjectPath, isPlanWork, isPlannerAgent, stateForTool } = require('../out/scanner');
 
 const j = (o) => JSON.stringify(o);
 const user = (text) => j({ type: 'user', cwd: '/home/a/monprojet', message: { role: 'user', content: text } });
@@ -114,6 +114,37 @@ t('plan rédigé hors mode plan (mode auto)', () => {
   assert.ok(!isPlanWork('Write', 'explanation.md'));
   assert.ok(!isPlanWork('Skill', 'commit'));
   assert.ok(!isPlanWork('Read', 'plan.md'));
+});
+
+t('skill : réfléchit (le skill plan reste traité à part)', () => {
+  assert.strictEqual(stateForTool('Skill'), 'thinking');
+  assert.strictEqual(parseTail([user('go'), tool('s', 'Skill', { skill: 'test-driven-development' })].join('\n')).detail, 'test-driven-development');
+});
+
+t('planification par skills (superpowers) : détection', () => {
+  assert.ok(isPlanWork('Skill', 'superpowers:brainstorming'));
+  assert.ok(isPlanWork('Skill', 'superpowers:writing-plans'));
+  assert.ok(isPlanWork('Skill', 'engineering:architecture'));
+  assert.ok(!isPlanWork('Skill', 'superpowers:executing-plans'));
+  assert.ok(!isPlanWork('Skill', 'frontend-design:frontend-design'));
+  const f = '/p/docs/superpowers/plans/2026-10-10-feature.md';
+  assert.strictEqual(parseTail([user('go'), tool('w', 'Write', { file_path: f })].join('\n')).detail, 'plans/2026-10-10-feature.md');
+  assert.ok(isPlanWork('Write', 'plans/2026-10-10-feature.md'));
+  assert.ok(isPlanWork('Write', 'specs/2026-10-10-feature-design.md'));
+  assert.ok(!isPlanWork('Edit', 'app.ts'));
+  assert.ok(isPlannerAgent('Plan') && isPlannerAgent('architect') && !isPlannerAgent('explorer'));
+});
+t('planification par skills : persiste pendant le brainstorming, s\'arrête au premier code', () => {
+  const um = (text) => j({ type: 'user', permissionMode: 'auto', message: { role: 'user', content: text } });
+  const brain = [um('on conçoit X'), tool('s', 'Skill', { skill: 'superpowers:brainstorming' }), result('s'), say('Question 1 ?'), um('réponse 1'), say('Question 2 ?')];
+  const p1 = parseTail(brain.join('\n'));
+  assert.strictEqual(p1.planSkill, true);
+  assert.strictEqual(p1.planMode, false);
+  const p2 = parseTail([...brain, tool('e', 'Edit', { file_path: '/p/src/app.ts' }), result('e'), say('fait')].join('\n'));
+  assert.ok(!p2.planSkill);
+  // écrire le plan lui-même ne l'arrête pas
+  const p3 = parseTail([...brain, tool('w', 'Write', { file_path: '/p/docs/superpowers/plans/x.md' }), result('w'), say('plan écrit')].join('\n'));
+  assert.strictEqual(p3.planSkill, true);
 });
 
 console.log(`\n${n} tests OK`);

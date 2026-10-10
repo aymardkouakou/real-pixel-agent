@@ -53,6 +53,8 @@ export interface Parsed {
   detail?: string;
   subType?: string;
   planMode?: boolean;
+  /** Un skill / document de planification est en cours (hors mode plan) : valable jusqu'à la première modification de code. */
+  planSkill?: boolean;
 }
 
 const HEAD_BYTES = 64 * 1024;
@@ -88,7 +90,7 @@ export function stateForTool(name: string): AgentState {
       return 'waiting';
     case 'ExitPlanMode': case 'EnterPlanMode':
       return 'planning';
-    case 'TodoWrite':
+    case 'TodoWrite': case 'Skill':
       return 'thinking';
     default:
       return name.startsWith('mcp__') ? 'searching' : 'running';
@@ -99,8 +101,12 @@ export function describeTool(name: string, input: any): string {
   const i = input || {};
   const base = (p: unknown) => (p ? path.basename(String(p)) : '');
   switch (name) {
-    case 'Read': case 'Write': case 'Edit': case 'MultiEdit':
-      return base(i.file_path);
+    case 'Read': case 'Write': case 'Edit': case 'MultiEdit': {
+      const b = base(i.file_path);
+      // dossier de planification (docs/superpowers/plans/…) : on le garde dans le détail
+      const dir = i.file_path ? path.basename(path.dirname(String(i.file_path))) : '';
+      return name !== 'Read' && /^(plans?|specs?|designs?)$/i.test(dir) ? `${dir}/${b}` : b;
+    }
     case 'NotebookEdit': case 'NotebookRead':
       return base(i.notebook_path);
     case 'Bash':
@@ -126,13 +132,22 @@ export function describeTool(name: string, input: any): string {
   }
 }
 
-/** Rédaction d'un plan hors mode plan (mode auto) : skill de planification, ou écriture d'un fichier « plan ». */
+/** Skills de planification / conception (executing-plans, frontend-design… n'en font pas partie). */
+const PLAN_SKILL = /brainstorm|writing-plans|architect|system-design|testing-strategy|(^|:)plan$/i;
+/** Fichier de plan, de spec ou de conception : dossier plans/ specs/ designs/ ou nom contenant plan / spec / design. */
+const PLAN_FILE = /(^|[\/_.\s-])(plans?|specs?|designs?)([\/_.\s-]|$)/i;
+/** Sous-agents dont le métier est de planifier. */
+export const isPlannerAgent = (subType?: string) => !!subType && /^(plan|architect)$/i.test(subType);
+
+/** Rédaction d'un plan hors mode plan (mode auto) : skill de planification, ou écriture d'un fichier de plan / spec. */
 export function isPlanWork(tool: string | undefined, detail: string | undefined): boolean {
   if (!tool || !detail) return false;
-  if (tool === 'Skill') return /plan|brainstorm/i.test(detail);
-  if (tool === 'Write' || tool === 'Edit' || tool === 'MultiEdit') return /(^|[-_.\s])plans?([-_.\s]|$)/i.test(detail);
+  if (tool === 'Skill') return PLAN_SKILL.test(detail);
+  if (tool === 'Write' || tool === 'Edit' || tool === 'MultiEdit') return PLAN_FILE.test(detail);
   return false;
 }
+const isCodeEdit = (tool: string, detail: string) =>
+  (tool === 'Write' || tool === 'Edit' || tool === 'MultiEdit' || tool === 'NotebookEdit') && !PLAN_FILE.test(detail);
 
 function textOf(content: any): string {
   if (typeof content === 'string') return content;
@@ -145,7 +160,7 @@ function textOf(content: any): string {
 // ---------------------------------------------------------------------------
 // Résumé compact d'une ligne de transcription : c'est tout ce qu'on garde en mémoire.
 // ---------------------------------------------------------------------------
-interface ToolRef { id: string; name: string; detail: string; subType?: string }
+interface ToolRef { id: string; name: string; detail: string; subType?: string; plan?: boolean; edit?: boolean }
 export interface Entry {
   type: 'user' | 'assistant';
   meta?: boolean;
@@ -191,6 +206,8 @@ export function summarize(e: any): Entry | null {
       out.tools = tools.map((b: any) => {
         const r: ToolRef = { id: String(b.id || ''), name: String(b.name || ''), detail: describeTool(String(b.name || ''), b.input) };
         if (b.input?.subagent_type) r.subType = String(b.input.subagent_type);
+        if (isPlanWork(r.name, r.detail)) r.plan = true;
+        else if (isCodeEdit(r.name, r.detail)) r.edit = true;
         return r;
       });
     }
@@ -216,7 +233,9 @@ function summarizeLines(text: string): Entry[] {
 /** Ce que fait l'agent, d'après la fin de la liste d'entrées. */
 export function decide(entries: Entry[]): Parsed {
   const p = decideKind(entries);
-  p.planMode = decidePlan(entries);
+  const pl = decidePlan(entries);
+  p.planMode = pl.mode;
+  if (pl.skill) p.planSkill = true;
   return p;
 }
 
@@ -252,20 +271,30 @@ function decideKind(entries: Entry[]): Parsed {
 }
 
 /**
- * Mode plan actif ? On remonte jusqu'au premier indice décisif : champ permissionMode
- * des messages utilisateur, ou rappels système d'entrée/sortie du mode plan.
+ * Deux indices indépendants, chacun décidé par son premier indice décisif en remontant :
+ *  - mode plan : champ permissionMode des messages utilisateur, rappels système d'entrée/sortie ;
+ *  - planification hors mode plan (mode auto) : un skill / fichier de plan active, la première modification
+ *    de code désactive. Les réponses de l'utilisateur pendant un brainstorming ne l'interrompent pas.
  */
-function decidePlan(entries: Entry[]): boolean {
+function decidePlan(entries: Entry[]): { mode: boolean; skill: boolean } {
+  let mode: boolean | undefined, skill: boolean | undefined;
   let seen = 0;
-  for (let i = entries.length - 1; i >= 0 && seen < 300; i--) {
+  for (let i = entries.length - 1; i >= 0 && seen < 300 && (mode === undefined || skill === undefined); i--) {
     const e = entries[i];
-    if (e.type !== 'user') continue;
     seen++;
-    if (e.pm !== undefined) return e.pm === 'plan';
-    if (e.planOff) return false;
-    if (e.planOn) return true;
+    if (e.type === 'user') {
+      if (mode !== undefined) continue;
+      if (e.pm !== undefined) mode = e.pm === 'plan';
+      else if (e.planOff) mode = false;
+      else if (e.planOn) mode = true;
+    } else if (e.tools && skill === undefined) {
+      for (let k = e.tools.length - 1; k >= 0; k--) {
+        if (e.tools[k].plan) { skill = true; break; }
+        if (e.tools[k].edit) { skill = false; break; }
+      }
+    }
   }
-  return false;
+  return { mode: !!mode, skill: !!skill };
 }
 
 /** Analyse la fin d'une transcription (texte brut JSONL). */
@@ -504,6 +533,7 @@ export class Scanner {
 
       // Hooks : information exacte, prioritaire quand elle est au moins aussi récente que la transcription.
       let planMode = !!p.planMode;
+      const planSkill = !!p.planSkill;
       if (hs) {
         const fresh = hs.t >= mtime - 1500;
         if (hs.pm) planMode = hs.pm === 'plan';
@@ -518,8 +548,8 @@ export class Scanner {
       }
 
       // Rédaction d'un plan : mode plan actif, plan présenté (ExitPlanMode), sous-agent « Plan » lancé, ou skill / fichier de plan (mode auto).
-      const planTool = (tool === 'ExitPlanMode' || tool === 'EnterPlanMode' || isPlanWork(tool, detail) || p.subType === 'Plan' || hs?.subType === 'Plan') && state !== 'waiting';
-      if (state !== 'sleeping' && state !== 'permission' && (planTool || planMode)) {
+      const planTool = (tool === 'ExitPlanMode' || tool === 'EnterPlanMode' || isPlanWork(tool, detail) || isPlannerAgent(p.subType) || isPlannerAgent(hs?.subType)) && state !== 'waiting';
+      if (state !== 'sleeping' && state !== 'permission' && (planTool || planMode || planSkill)) {
         if (!planTool && !detail) detail = state === 'waiting' ? 'plan en discussion' : 'rédige le plan';
         state = 'planning';
       }
