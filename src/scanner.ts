@@ -386,6 +386,8 @@ interface FileState {
   title?: string;
   cwd?: string;
   external: boolean;
+  /** dossier retenu seulement par préfixe de nom : le vrai cwd de la session doit être vérifié */
+  verify?: boolean;
 }
 
 export class Scanner {
@@ -399,7 +401,7 @@ export class Scanner {
 
   constructor(public opts: ScannerOptions) {}
 
-  private projectDirs(): { dir: string; external: boolean }[] {
+  private projectDirs(): { dir: string; external: boolean; verify: boolean }[] {
     const root = this.opts.projectsDir;
     let dirs: string[];
     try {
@@ -409,14 +411,24 @@ export class Scanner {
     }
     const enc = this.opts.workspaceFolders.map((f) => encodeProjectPath(f).toLowerCase());
     const filter = this.opts.onlyCurrentWorkspace && enc.length > 0;
-    const out: { dir: string; external: boolean }[] = [];
+    const out: { dir: string; external: boolean; verify: boolean }[] = [];
     for (const d of dirs) {
       const n = d.toLowerCase();
-      const mine = !filter || enc.some((e) => n === e || n.startsWith(e + '-'));
-      if (mine) out.push({ dir: path.join(root, d), external: false });
-      else if (this.opts.showOtherWorkspaces) out.push({ dir: path.join(root, d), external: true });
+      // « -a-b » peut être le dossier /a/b (sous-dossier du workspace) comme le projet voisin /a-b :
+      // le nom encodé ne les distingue pas, on vérifiera le cwd réel de la session (verify).
+      const exact = !filter || enc.some((e) => n === e);
+      const mine = exact || enc.some((e) => n.startsWith(e + '-'));
+      if (mine) out.push({ dir: path.join(root, d), external: false, verify: !exact });
+      else if (this.opts.showOtherWorkspaces) out.push({ dir: path.join(root, d), external: true, verify: false });
     }
     return out;
+  }
+
+  /** Le cwd de la session est-il le workspace ouvert ou l'un de ses sous-dossiers ? */
+  private inWorkspace(cwd: string): boolean {
+    const norm = (x: string) => x.replace(/[\\/]+$/, '').replace(/\\/g, '/').toLowerCase();
+    const c = norm(cwd);
+    return this.opts.workspaceFolders.some((f) => { const w = norm(f); return c === w || c.startsWith(w + '/'); });
   }
 
   /** Lecture disque : nouveaux fichiers, octets ajoutés. Retourne true si quelque chose a changé. */
@@ -424,7 +436,7 @@ export class Scanner {
     const seenDirs = new Set<string>();
     const live = new Set<string>();
     let changed = false;
-    for (const { dir, external } of this.projectDirs()) {
+    for (const { dir, external, verify } of this.projectDirs()) {
       const list: string[] = [];
       listJsonl(dir, 0, list, this.dirCache, seenDirs);
       for (const file of list) {
@@ -446,7 +458,7 @@ export class Scanner {
           const consumed = end >= 0 ? text.slice(0, end + 1) : '';
           const prev = fsx;
           fsx = {
-            file, mtime: st.mtimeMs, size: st.size, external,
+            file, mtime: st.mtimeMs, size: st.size, external, verify,
             offset: st.size - Buffer.byteLength(text) + Buffer.byteLength(consumed),
             entries: summarizeLines(consumed).slice(-MAX_ENTRIES),
             parsed: { kind: 'none' },
@@ -488,6 +500,9 @@ export class Scanner {
       const { file, mtime } = fsx;
       const age = now - mtime;
       if (age > this.opts.activeWindowMs) continue;
+      // projet voisin dont le nom commence comme le workspace (ex. app / app-admin) : pas le nôtre
+      const outside = !!fsx.verify && !!fsx.cwd && !this.inWorkspace(fsx.cwd);
+      if (outside && !this.opts.showOtherWorkspaces) continue;
 
       const rel = path.relative(root, file).split(path.sep);
       const projDir = rel[0];
@@ -565,7 +580,7 @@ export class Scanner {
         lastActivity: Math.max(mtime, hs?.t || 0),
         exact: !!hs,
       };
-      if (fsx.external) info.external = true;
+      if (fsx.external || outside) info.external = true;
       const pids = hs?.pids || (isSub ? this.hooks?.get(sid)?.pids : undefined);
       if (pids) info.pids = pids;
       out.push(info);

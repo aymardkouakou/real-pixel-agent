@@ -147,4 +147,26 @@ t('planification par skills : persiste pendant le brainstorming, s\'arrête au p
   assert.strictEqual(p3.planSkill, true);
 });
 
+t('projet voisin au nom préfixé : pas dans le workspace courant', () => {
+  const root = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'pa-'));
+  const mk = (dir, cwd, text) => {
+    fs.mkdirSync(path.join(root, dir));
+    const line = j({ type: 'user', cwd, message: { role: 'user', content: text } });
+    fs.writeFileSync(path.join(root, dir, 's.jsonl'), line + '\n' + tool('t', 'Read', { file_path: '/x/a.ts' }) + '\n');
+  };
+  mk('-home-a-monprojet', '/home/a/monprojet', 'racine');
+  mk('-home-a-monprojet-sub', '/home/a/monprojet/sub', 'sous-dossier');
+  mk('-home-a-monprojet-admin', '/home/a/monprojet-admin', 'voisin');
+  const mkScanner = (show) => new Scanner({
+    projectsDir: root, workspaceFolders: ['/home/a/monprojet'], onlyCurrentWorkspace: true, showOtherWorkspaces: show,
+    activeWindowMs: 20 * 60_000, permissionDelayMs: 8_000,
+  });
+  const titles = (a) => a.map((x) => x.title).sort();
+  assert.deepStrictEqual(titles(mkScanner(false).scan()), ['racine', 'sous-dossier']);
+  const all = mkScanner(true).scan();
+  assert.deepStrictEqual(titles(all), ['racine', 'sous-dossier', 'voisin']);
+  assert.deepStrictEqual(all.filter((x) => x.external).map((x) => x.title), ['voisin']);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
 console.log(`\n${n} tests OK`);
