@@ -1,5 +1,12 @@
 # Journal des versions
 
+## 0.5.2
+- Document 3D renderer as experimental with hardware recommendations; light rooms at night
+- 3D: chase camera behind the followed agent, wall avoidance, distance-scaled bubbles
+- Exclude tooling folders from the VSIX; set allowScripts for npm 12
+- Add npm run package: version bump, CHANGELOG section and VSIX in one command
+- Detect planning via superpowers skills and plan/spec files, keep it sticky until code edits
+
 ## 0.5.1
 - **Rendu 3D : zoom et commandes** : la barre de zoom (−, curseur, niveau), les touches `+` `-` `0`, `F` `L` `P`, les boutons de zones, le suivi d'un agent (double-clic), le zoom par double-clic et le mode Visiter fonctionnent désormais en 3D. Le visiteur est visible dans la scène.
 - **Rendu 3D : écrans animés** : les écrans des bureaux, du lead, de la borne d'arcade et le kanban de la salle de plan reprennent les animations du rendu pixel selon l'état de l'agent.
