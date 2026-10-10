@@ -1,5 +1,8 @@
 # Journal des versions
 
+## 0.5.4
+- Make hook removal reversible and clean up on uninstall
+
 ## 0.5.3
 - **Correctif : sessions d'autres projets** : avec `onlyCurrentWorkspace`, les sessions d'un projet voisin dont le nom commence comme le workspace (ex. `app` et `app-admin`) apparaissaient dans le campus. Le dossier réel (`cwd`) de chaque session est maintenant vérifié : seuls le workspace et ses sous-dossiers sont affichés, les autres projets vont dans l'annexe si `showOtherWorkspaces` est activé.
 
