@@ -1,11 +1,10 @@
 # Journal des versions
 
 ## 0.5.2
-- Document 3D renderer as experimental with hardware recommendations; light rooms at night
-- 3D: chase camera behind the followed agent, wall avoidance, distance-scaled bubbles
-- Exclude tooling folders from the VSIX; set allowScripts for npm 12
-- Add npm run package: version bump, CHANGELOG section and VSIX in one command
-- Detect planning via superpowers skills and plan/spec files, keep it sticky until code edits
+- **Rendu 3D : caméra de suivi** : en suivi ou en mode Visiter, la caméra se place derrière l'agent, regarde dans sa direction et tourne avec lui (glisser pour décaler la vue). Elle se rapproche quand un mur la masque, et les bulles proches de la caméra rétrécissent.
+- **Rendu 3D : expérimental** : le réglage `renderer` est signalé comme expérimental, avec la configuration matérielle recommandée dans le README. Les salles sont éclairées la nuit.
+- **Planification** : un agent qui lance un skill de planification (`brainstorming`, `writing-plans`, `architecture`…), écrit un fichier de plan ou de spec (`plans/`, `specs/`) ou est un sous-agent `Plan` / `architect` rejoint la salle de plan, même hors mode plan. Il y reste tant qu'il ne modifie pas de code. Les autres skills s'affichent en « réfléchit ».
+- **Outillage** : `npm run package` ajoute la section du CHANGELOG, change la version et construit le `.vsix` (`package:dev` pour un `.vsix` de test) ; les dossiers d'outils sont exclus du `.vsix` ; `allowScripts` pour npm 12.
 
 ## 0.5.1
 - **Rendu 3D : zoom et commandes** : la barre de zoom (−, curseur, niveau), les touches `+` `-` `0`, `F` `L` `P`, les boutons de zones, le suivi d'un agent (double-clic), le zoom par double-clic et le mode Visiter fonctionnent désormais en 3D. Le visiteur est visible dans la scène.
