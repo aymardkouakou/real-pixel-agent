@@ -178,7 +178,7 @@ async function send(page, m) {
     page.on('pageerror', (e) => errors.push(String(e)));
     page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
     if (c.real) Object.defineProperty(page, 'clock', { value: { runFor: (ms) => page.waitForTimeout(ms) } });
-    else await page.clock.install({ time: T0 });
+    else { await page.clock.install({ time: T0 }); await page.clock.pauseAt(T0 + 1); } // l'horloge n'avance plus que via runFor : pas de dérive liée au temps réel
     await page.goto('file://' + path.join(dir, 'index.html'));
     await page.clock.runFor(100);
     await c.steps(page);

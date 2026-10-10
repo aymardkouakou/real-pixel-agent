@@ -3,7 +3,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { Scanner, parseTail, parseHead, encodeProjectPath, isPlanWork, isPlannerAgent, stateForTool } = require('../out/scanner');
+const { Scanner, parseTail, parseHead, lastSessionTitle, encodeProjectPath, isPlanWork, isPlannerAgent, stateForTool } = require('../out/scanner');
 
 const j = (o) => JSON.stringify(o);
 const user = (text) => j({ type: 'user', cwd: '/home/a/monprojet', message: { role: 'user', content: text } });
@@ -54,6 +54,14 @@ t('titre et cwd', () => {
   const h = parseHead([user('<command-name>/clear</command-name>'), user('Ajoute la pagination à /users\net des tests')].join('\n'));
   assert.strictEqual(h.title, 'Ajoute la pagination à /users');
   assert.strictEqual(h.cwd, '/home/a/monprojet');
+});
+t('titre de session : renommage > titre auto > premier message', () => {
+  const ai = (v) => JSON.stringify({ type: 'ai-title', aiTitle: v, sessionId: 's' });
+  const custom = (v) => JSON.stringify({ type: 'custom-title', customTitle: v, sessionId: 's' });
+  assert.strictEqual(lastSessionTitle([ai('Ancien'), ai('Automatisation du navigateur')].join('\n')), 'Automatisation du navigateur');
+  assert.strictEqual(lastSessionTitle([custom('Mon nom'), ai('Auto')].join('\n')), 'Mon nom');
+  assert.strictEqual(lastSessionTitle(user('bonjour')), undefined);
+  assert.strictEqual(parseHead([user('premier message'), ai('Titre auto')].join('\n')).title, 'Titre auto');
 });
 t('encodage chemins', () => {
   assert.strictEqual(encodeProjectPath('/home/a/mon_projet'), '-home-a-mon-projet');

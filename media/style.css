@@ -33,7 +33,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 80px;
+  min-width: 160px;
   flex: 0 1 auto;
 }
 #zones { display: flex; gap: 2px; margin-left: 6px; }
@@ -41,7 +41,7 @@ body {
 .zoom { display: inline-flex; align-items: center; gap: 2px; }
 #zlvl { min-width: 44px; padding: 3px 4px; text-align: center; color: var(--muted); font-variant-numeric: tabular-nums; }
 #zrange { width: 90px; accent-color: var(--accent); margin: 0 2px; cursor: pointer; }
-@media (max-width: 760px) { #zrange { display: none; } }
+@media (max-width: 1000px) { #zrange { display: none; } }
 
 button {
   font: inherit;

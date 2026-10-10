@@ -66,6 +66,7 @@ let followId = null;
 let leadOverride = saved.lead || null;
 let leadId = null;
 let gathering = false;
+let finishedSubs = 0; // sous-agents vus puis terminés depuis l'ouverture de la vue
 let firstUpdate = true;
 let zoom = saved.zoom || 0;
 const cam = { x: saved.camX ?? 0, y: saved.camY ?? 0 };

@@ -117,7 +117,10 @@ function update(msg) {
   looks = newLooks;
   departures = 0;
   for (const a of actors.values()) {
-    if (!byId.has(a.id) && !a.leaving) { a.leaving = true; setTarget(a, 'exit'); }
+    if (!byId.has(a.id) && !a.leaving) {
+      a.leaving = true; setTarget(a, 'exit');
+      if (a.agent.isSub && !a.agent.external && !firstUpdate) finishedSubs++;
+    }
   }
 
   // places : salle de plan / lounge / bureau / annexe

@@ -302,6 +302,20 @@ export function parseTail(text: string): Parsed {
   return decide(summarizeLines(text));
 }
 
+/** Dernier titre posé par Claude Code (renommage manuel ou titre auto) dans un extrait de transcription. */
+export function lastSessionTitle(text: string): string | undefined {
+  let custom: string | undefined;
+  let auto: string | undefined;
+  for (const m of text.matchAll(/"type":"(custom-title|ai-title)","(?:customTitle|aiTitle)":("(?:[^"\\]|\\.)*")/g)) {
+    let v: string;
+    try { v = JSON.parse(m[2]); } catch { continue; }
+    if (!v.trim()) continue;
+    if (m[1] === 'custom-title') custom = v; else auto = v;
+  }
+  const t = custom ?? auto;
+  return t ? trunc(t.trim(), 60) : undefined;
+}
+
 /** Titre de la session : résumé si présent, sinon premier message de l'utilisateur. Renvoie aussi le cwd. */
 export function parseHead(text: string): { title?: string; cwd?: string } {
   let title: string | undefined;
@@ -321,7 +335,7 @@ export function parseHead(text: string): { title?: string; cwd?: string } {
     }
     if ((title || summary) && cwd) break;
   }
-  return { title: summary ? trunc(summary, 60) : title, cwd };
+  return { title: lastSessionTitle(text) ?? (summary ? trunc(summary, 60) : title), cwd };
 }
 
 function readSlice(file: string, start: number, len: number): Buffer {
@@ -469,13 +483,16 @@ export class Scanner {
             this.bytesRead += head.length;
             Object.assign(fsx, parseHead(head.toString('utf8')));
           }
+          fsx.title = lastSessionTitle(consumed) ?? fsx.title;
         } else {
           // lecture incrémentale : uniquement les octets ajoutés depuis la dernière fois
           const buf = readSlice(file, fsx.offset, st.size - fsx.offset);
           this.bytesRead += buf.length;
           const nl = buf.lastIndexOf(10);
           if (nl >= 0) {
-            const added = summarizeLines(buf.subarray(0, nl + 1).toString('utf8'));
+            const chunk = buf.subarray(0, nl + 1).toString('utf8');
+            fsx.title = lastSessionTitle(chunk) ?? fsx.title;
+            const added = summarizeLines(chunk);
             fsx.entries.push(...added);
             if (fsx.entries.length > MAX_ENTRIES) fsx.entries.splice(0, fsx.entries.length - MAX_ENTRIES);
             fsx.offset += nl + 1;

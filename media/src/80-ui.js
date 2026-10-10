@@ -11,11 +11,15 @@ function refreshChrome() {
   const perm = present.filter((a) => a.agent.state === 'permission').length;
   let txt = main ? `${main} agent${main > 1 ? 's' : ''}` : 'Aucun agent';
   if (subs) txt += ` + ${subs} sous-agent${subs > 1 ? 's' : ''}`;
+  const deleg = present.filter((a) => !a.agent.isSub && a.agent.state === 'delegating').length;
+  if (deleg) txt += ' · ⇢ délègue';
+  if (finishedSubs) txt += ` · ✓ ${finishedSubs} terminé${finishedSubs > 1 ? 's' : ''}`;
   if (gathering) txt += ' · 📋 réunion plan';
   if (perm) txt += ` · ⚠ ${perm}`;
   if (wait) txt += ` · ${wait} t'attend${wait > 1 ? 'ent' : ''}`;
   if (ext) txt += ` · ${ext} à l'annexe`;
   elCount.textContent = txt;
+  elCount.title = txt;
   elEmpty.hidden = all.length > 0;
   // badge de précision du suivi
   elHooks.hidden = hookMode === 'on';

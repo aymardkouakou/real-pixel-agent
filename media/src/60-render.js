@@ -216,7 +216,7 @@ function drawLabels(cx, cy) {
     const pos = a.labelAt || (a.hit ? { x: a.hit.x + a.hit.w / 2, y: a.hit.y + a.hit.h + 1 } : { x: a.x, y: a.y + 2 });
     const X = (pos.x - cx) * zoom, Y = (pos.y - cy) * zoom;
     if (X < -100 || Y < -40 || X > cssW + 100 || Y > cssH + 40) continue;
-    const max = Math.max(90, Math.min(260, 50 * zoom));
+    const max = Math.max(90, Math.min(260, 50 * zoom)) * (isLead ? 1.5 : 1);
     const size = Math.round(isLead ? Math.min(16, Math.max(11, zoom * 3.8)) : Math.min(14, Math.max(10, zoom * 3.3)));
     ctx.font = `600 ${size}px ${FONT}`;
     const name = `${isLead ? '★ ' : ag.isSub ? '↳ ' : ''}${ag.external ? '[' + ag.project + '] ' : ''}#${ag.num} ${ag.title}`;
