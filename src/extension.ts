@@ -210,7 +210,7 @@ class Hub implements vscode.Disposable {
   private updateStatus() {
     const main = this.agents.filter((a) => !a.isSub && !a.external);
     if (!main.length) { this.status.hide(); return; }
-    const waiting = this.agents.filter((a) => a.state === 'waiting' || (a.state === 'planning' && a.tool === 'ExitPlanMode')).length;
+    const waiting = this.agents.filter((a) => a.wait && a.wait !== 'done').length;
     const perm = this.agents.filter((a) => a.state === 'permission').length;
     let text = `$(hubot) ${main.length}`;
     if (perm) text += ` · $(bell-dot) ${perm}`;
@@ -218,7 +218,7 @@ class Hub implements vscode.Disposable {
     this.status.text = text;
     const mode = this.hookMode();
     this.status.tooltip = [
-      ...this.agents.map((a) => `${a.isSub ? '  ↳ ' : ''}#${a.num} ${a.title} — ${STATE_LABEL[a.state]}${a.detail ? ` (${a.detail})` : ''}`),
+      ...this.agents.map((a) => `${a.isSub ? '  ↳ ' : ''}#${a.num} ${a.title} — ${a.stateLabel ?? STATE_LABEL[a.state]}${a.detail ? ` (${a.detail})` : ''}`),
       '',
       mode === 'on' ? 'Suivi exact (hooks Claude Code)' : mode === 'installed' ? 'Hooks installés : relance tes sessions Claude Code' : 'Suivi estimé (hooks non installés)',
     ].join('\n');

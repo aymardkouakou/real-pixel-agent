@@ -3,7 +3,7 @@ const assert = require('assert');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const { Scanner, parseTail, parseHead, lastSessionTitle, encodeProjectPath, isPlanWork, isPlannerAgent, stateForTool } = require('../out/scanner');
+const { Scanner, parseTail, parseHead, lastSessionTitle, encodeProjectPath, isPlanWork, isPlannerAgent, stateForTool, waitKind, waitLabel, describeTool } = require('../out/scanner');
 
 const j = (o) => JSON.stringify(o);
 const user = (text) => j({ type: 'user', cwd: '/home/a/monprojet', message: { role: 'user', content: text } });
@@ -174,6 +174,47 @@ t('projet voisin au nom préfixé : pas dans le workspace courant', () => {
   const all = mkScanner(true).scan();
   assert.deepStrictEqual(titles(all), ['racine', 'sous-dossier', 'voisin']);
   assert.deepStrictEqual(all.filter((x) => x.external).map((x) => x.title), ['voisin']);
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+t('réflexion longue : pas « en pause » avant 10 min', () => {
+  const root = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'pa-'));
+  fs.mkdirSync(path.join(root, '-home-a-monprojet'));
+  const f = path.join(root, '-home-a-monprojet', 's.jsonl');
+  fs.writeFileSync(f, [user('go'), tool('t', 'Read', { file_path: '/x/a.ts' }), result('t')].join('\n') + '\n');
+  const sc = new Scanner({ projectsDir: root, workspaceFolders: ['/home/a/monprojet'], onlyCurrentWorkspace: true, activeWindowMs: 60 * 60_000, permissionDelayMs: 8_000 });
+  const at = (min) => { const d = new Date(Date.now() - min * 60_000); fs.utimesSync(f, d, d); return sc.scan()[0].state; };
+  assert.strictEqual(at(4), 'thinking');
+  assert.strictEqual(at(12), 'sleeping');
+  fs.rmSync(root, { recursive: true, force: true });
+});
+
+t('attente : question, plan, message suivant, fin de tour', () => {
+  assert.strictEqual(waitKind('waiting', 'AskUserQuestion'), 'question');
+  assert.strictEqual(waitKind('planning', 'ExitPlanMode'), 'plan');
+  assert.strictEqual(waitKind('waiting', undefined, true), 'idle');
+  assert.strictEqual(waitKind('waiting'), 'done');
+  assert.strictEqual(waitKind('thinking'), undefined);
+  assert.strictEqual(waitKind('planning', 'EnterPlanMode'), undefined);
+  assert.ok(/rien à te demander/.test(waitLabel('done', false)));
+  assert.ok(/agent principal/.test(waitLabel('done', true)));
+  assert.strictEqual(describeTool('AskUserQuestion', { questions: [{ question: 'Quelle base ?' }] }), 'Quelle base ?');
+});
+
+t('tour fini : « a terminé », question : « te pose une question »', () => {
+  const root = fs.mkdtempSync(path.join(process.env.TMPDIR || os.tmpdir(), 'pa-'));
+  fs.mkdirSync(path.join(root, '-home-a-monprojet'));
+  const w = (n, lines) => fs.writeFileSync(path.join(root, '-home-a-monprojet', n + '.jsonl'), lines.join('\n') + '\n');
+  w('fini', [user('go'), say('Voilà, c\'est fait.')]);
+  w('ask', [user('go'), tool('q', 'AskUserQuestion', { questions: [{ question: 'Quelle base ?' }] })]);
+  const sc = new Scanner({ projectsDir: root, workspaceFolders: ['/home/a/monprojet'], onlyCurrentWorkspace: true, activeWindowMs: 60 * 60_000, permissionDelayMs: 8_000 });
+  const ags = sc.scan();
+  const fini = ags.find((a) => a.file.endsWith('fini.jsonl'));
+  const ask = ags.find((a) => a.file.endsWith('ask.jsonl'));
+  assert.strictEqual(fini.wait, 'done');
+  assert.ok(/terminé/.test(fini.stateLabel));
+  assert.strictEqual(ask.wait, 'question');
+  assert.strictEqual(ask.detail, 'Quelle base ?');
   fs.rmSync(root, { recursive: true, force: true });
 });
 

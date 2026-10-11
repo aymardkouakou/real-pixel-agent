@@ -84,7 +84,8 @@ function drawWalker(fx, fy, L, t, moving, back) {
   rect(x + 2, y + 15, 2, f ? 3 : 2, L.pants); rect(x + 6, y + 15, 2, f ? 2 : 3, L.pants);
   rect(x + 2, y + (f ? 18 : 17), 2, 1, '#141414'); rect(x + 6, y + (f ? 17 : 18), 2, 1, '#141414');
 }
-function drawBubble(hx, hy, state, t, tool) {
+function drawBubble(hx, hy, state, t, tool, wait) {
+  if (state === 'waiting' && wait === 'done') return; // tour fini : rien n'est demandé, pas de « ? »
   if (state === 'sleeping') {
     const k = ((t / 700) | 0) % 3;
     for (let i = 0; i <= k; i++) glyph(G.z, hx + 9 + i * 3, hy - 4 - i * 4, i === k ? '#ffffff' : '#b0bec5');

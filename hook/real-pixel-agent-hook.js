@@ -31,6 +31,8 @@ function pick(ti) {
   for (const k of ['file_path', 'notebook_path', 'description', 'pattern', 'url', 'query', 'subagent_type']) {
     if (ti[k] != null) o[k] = trunc(ti[k], 160);
   }
+  const q = ti.questions && ti.questions[0] && ti.questions[0].question;
+  if (q != null) o.question = trunc(q, 160);
   if (ti.command != null) o.command = trunc(ti.command, 160);
   return o;
 }
