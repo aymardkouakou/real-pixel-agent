@@ -7,7 +7,7 @@ function refreshChrome() {
   const ext = all.length - present.length;
   const main = present.filter((a) => !a.agent.isSub).length;
   const subs = present.length - main;
-  const wait = present.filter((a) => a.agent.state === 'waiting' || (a.agent.state === 'planning' && a.agent.tool === 'ExitPlanMode')).length;
+  const wait = present.filter((a) => a.agent.wait && a.agent.wait !== 'done').length;
   const perm = present.filter((a) => a.agent.state === 'permission').length;
   let txt = main ? `${main} agent${main > 1 ? 's' : ''}` : 'Aucun agent';
   if (subs) txt += ` + ${subs} sous-agent${subs > 1 ? 's' : ''}`;
@@ -16,7 +16,7 @@ function refreshChrome() {
   if (finishedSubs) txt += ` · ✓ ${finishedSubs} terminé${finishedSubs > 1 ? 's' : ''}`;
   if (gathering) txt += ' · 📋 réunion plan';
   if (perm) txt += ` · ⚠ ${perm}`;
-  if (wait) txt += ` · ${wait} t'attend${wait > 1 ? 'ent' : ''}`;
+  if (wait) txt += ` · ${wait} attend${wait > 1 ? 'ent' : ''} ta décision`;
   if (ext) txt += ` · ${ext} à l'annexe`;
   elCount.textContent = txt;
   elCount.title = txt;
@@ -63,7 +63,7 @@ function renderInfo() {
   const meta = document.createElement('div');
   meta.className = 'muted';
   const where = { lead: 'bureau du lead', desk: 'open space', annex: 'annexe', meet: 'salle de plan', lounge: 'lounge', exit: 'sort' }[a.target?.kind] || '';
-  meta.textContent = `${labels[ag.state] || ag.state}${ag.tool ? ` — ${ag.tool}` : ''}${ag.detail ? ` : ${ag.detail}` : ''} · ${ag.project} · ${where} · ${ago(ag.lastActivity)} · ${ag.exact ? '✓ suivi exact' : '≈ estimé'}`;
+  meta.textContent = `${ag.stateLabel || labels[ag.state] || ag.state}${ag.tool ? ` — ${ag.tool}` : ''}${ag.detail ? ` : ${ag.detail}` : ''} · ${ag.project} · ${where} · ${ago(ag.lastActivity)} · ${ag.exact ? '✓ suivi exact' : '≈ estimé'}`;
   const btns = document.createElement('div');
   btns.className = 'info-btns';
   btns.append(

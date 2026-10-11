@@ -628,7 +628,7 @@ function create(canvas) {
       if (sel) { ringSel.visible = true; ringSel.position.set(p.x, 0.27, p.z); ringSel.scale.setScalar(1 + Math.sin(t * 4) * 0.06); }
       if (hov && !sel) { ringHov.visible = true; ringHov.position.set(p.x, 0.27, p.z); }
       // bulle d'état
-      const sym = BUBBLE[a.state];
+      const sym = a.state === 'waiting' && a.wait === 'done' ? '✓' : BUBBLE[a.state];
       const bk = sym ? `${sym}|${a.state === 'permission' ? '#ff5252' : '#1b1b1b'}` : '';
       if (bk !== ch.bubbleKey) {
         if (ch.bubble) { ch.group.remove(ch.bubble); ch.bubble.material.dispose(); }
@@ -637,7 +637,7 @@ function create(canvas) {
         ch.bubbleKey = bk;
       }
       if (ch.bubble) {
-        const pulse = a.state === 'permission' || a.state === 'waiting';
+        const pulse = a.state === 'permission' || (a.state === 'waiting' && a.wait !== 'done');
         ch.bubble.position.set(0.9, 3.6 + Math.sin(t * 3) * 0.12 + (a.state === 'sleeping' ? Math.sin(t * 1.3) * 0.2 : 0), 0);
         const k = pulse ? 1 + Math.max(0, Math.sin(t * 6)) * 0.14 : 1;
         // bulle réduite (puis masquée) quand elle est près de la caméra : pas de bulle géante au premier plan

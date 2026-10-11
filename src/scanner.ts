@@ -16,6 +16,18 @@ export type AgentState =
   | 'permission'  // outil en attente depuis trop longtemps -> probablement une demande de permission
   | 'sleeping';   // inactif depuis plusieurs minutes
 
+export type WaitKind = 'question' | 'plan' | 'idle' | 'done';
+
+/** Libellé précis d'un agent en attente. `done` : tour fini, rien n'est demandé à l'utilisateur. */
+export function waitLabel(kind: WaitKind, isSub: boolean): string {
+  switch (kind) {
+    case 'question': return 'te pose une question';
+    case 'plan': return 'attend ta validation du plan';
+    case 'idle': return 'attend ton prochain message';
+    case 'done': return isSub ? 'a rendu son résultat à l\'agent principal' : 'a terminé, rien à te demander';
+  }
+}
+
 export interface AgentInfo {
   id: string;
   num: number;
@@ -26,6 +38,10 @@ export interface AgentInfo {
   tool?: string;
   detail?: string;
   isSub: boolean;
+  /** À qui / quoi l'agent s'adresse quand il est en `waiting` : question, plan à valider, message suivant, ou simple fin de tour. */
+  wait?: WaitKind;
+  /** Phrase précise remplaçant le libellé générique de l'état (ex. « te pose une question »). */
+  stateLabel?: string;
   parentId?: string;
   lastActivity: number;
   /** état issu des hooks Claude Code (exact) plutôt que déduit de la transcription */
@@ -97,6 +113,14 @@ export function stateForTool(name: string): AgentState {
   }
 }
 
+/** Nature de l'attente d'un agent (`undefined` s'il n'attend pas). */
+export function waitKind(state: AgentState, tool?: string, idle?: boolean): WaitKind | undefined {
+  if (state === 'planning' && tool === 'ExitPlanMode') return 'plan';
+  if (state !== 'waiting') return undefined;
+  if (tool === 'AskUserQuestion') return 'question';
+  return idle ? 'idle' : 'done';
+}
+
 export function describeTool(name: string, input: any): string {
   const i = input || {};
   const base = (p: unknown) => (p ? path.basename(String(p)) : '');
@@ -123,6 +147,8 @@ export function describeTool(name: string, input: any): string {
       return trunc(i.skill);
     case 'TodoWrite':
       return 'liste de tâches';
+    case 'AskUserQuestion':
+      return trunc(i.questions?.[0]?.question || i.question);
     case 'ExitPlanMode':
       return 'plan prêt, à valider';
     case 'EnterPlanMode':
@@ -136,6 +162,9 @@ export function describeTool(name: string, input: any): string {
 const PLAN_SKILL = /brainstorm|writing-plans|architect|system-design|testing-strategy|(^|:)plan$/i;
 /** Fichier de plan, de spec ou de conception : dossier plans/ specs/ designs/ ou nom contenant plan / spec / design. */
 const PLAN_FILE = /(^|[\/_.\s-])(plans?|specs?|designs?)([\/_.\s-]|$)/i;
+/** Délai sans activité avant de déclarer « en pause » un tour en cours (réflexion longue). */
+const THINKING_SLEEP_MS = 10 * 60_000;
+
 /** Sous-agents dont le métier est de planifier. */
 export const isPlannerAgent = (subType?: string) => !!subType && /^(plan|architect)$/i.test(subType);
 
@@ -556,7 +585,8 @@ export class Scanner {
           break;
         }
         case 'toolResult': case 'userPrompt': case 'thinking':
-          state = age > 3 * 60_000 ? 'sleeping' : 'thinking';
+          // Un tour en cours peut réfléchir longtemps sans rien écrire dans la transcription.
+          state = age > THINKING_SLEEP_MS ? 'sleeping' : 'thinking';
           break;
         case 'assistantText': case 'interrupted': case 'none':
         default:
@@ -574,6 +604,7 @@ export class Scanner {
           if (hs.tool) { tool = hs.tool; detail = hs.detail; }
         } else if (fresh) {
           if (hs.idle || hs.stopped) state = now - hs.t > 5 * 60_000 ? 'sleeping' : 'waiting';
+          else if (state === 'sleeping' && now - hs.t < THINKING_SLEEP_MS) state = 'thinking';
           else if (hs.last === 'PreToolUse' && hs.tool) { tool = hs.tool; detail = hs.detail; state = stateForTool(hs.tool); }
           else if (hs.last === 'UserPromptSubmit' || hs.last === 'PostToolUse' || hs.last === 'PostToolUseFailure') state = 'thinking';
         }
@@ -597,6 +628,8 @@ export class Scanner {
         lastActivity: Math.max(mtime, hs?.t || 0),
         exact: !!hs,
       };
+      const wait = waitKind(state, tool, hs?.idle);
+      if (wait) { info.wait = wait; info.stateLabel = waitLabel(wait, isSub); }
       if (fsx.external || outside) info.external = true;
       const pids = hs?.pids || (isSub ? this.hooks?.get(sid)?.pids : undefined);
       if (pids) info.pids = pids;

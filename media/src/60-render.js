@@ -119,7 +119,7 @@ function render(t) {
   // bulles et badges par-dessus
   for (const [a, hx, hy] of bubbles) {
     if (!inView(hx - 10, hy - 16, 30, 20)) continue;
-    drawBubble(hx, hy, a.agent.state, t, a.agent.tool);
+    drawBubble(hx, hy, a.agent.state, t, a.agent.tool, a.agent.wait);
     if (a.id === leadId) {
       const hasBubble = !['typing', 'reading', 'running', 'idle'].includes(a.agent.state);
       glyph(G.star, hasBubble ? hx - 7 : hx + 2, hy - 8 - (((t / 500) | 0) % 2), '#ffd54f');
@@ -229,7 +229,7 @@ function drawLabels(cx, cy) {
     if (a.labelAt || a.id === selected || a.id === hovered) {
       const ssz = Math.round(Math.min(12, Math.max(9, zoom * 2.9)));
       ctx.font = `${ssz}px ${FONT}`;
-      const st = (labels[ag.state] || ag.state) + (ag.detail ? ' · ' + ag.detail : '');
+      const st = (ag.stateLabel || labels[ag.state] || ag.state) + (ag.detail ? ' · ' + ag.detail : '');
       const stTxt = fit('● ' + st, max);
       const sw2 = ctx.measureText(stTxt).width;
       ctx.fillStyle = 'rgba(17,24,39,0.72)';

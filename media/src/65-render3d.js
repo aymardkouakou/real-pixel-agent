@@ -50,9 +50,9 @@ function render3d(t) {
     const ag = a.agent;
     list.push({
       id: a.id, x: a.x, y: a.y, seated: a.seated, leaving: a.leaving, kind: a.target && a.target.kind, i: a.target && a.target.i,
-      state: ag.state, moving: !!a.moving || (a.path.length > 0 && !(a.delay > 0)), look: a.look,
+      state: ag.state, wait: ag.wait, moving: !!a.moving || (a.path.length > 0 && !(a.delay > 0)), look: a.look,
       label: `${ag.isSub ? '↳ ' : ''}${ag.external ? '[' + ag.project + '] ' : ''}#${ag.num} ${ag.title}`, isLead: a.id === leadId,
-      stateText: (labels[ag.state] || ag.state) + (ag.detail ? ' · ' + ag.detail : ''),
+      stateText: (ag.stateLabel || labels[ag.state] || ag.state) + (ag.detail ? ' · ' + ag.detail : ''),
     });
   }
   if (visitMode) {
