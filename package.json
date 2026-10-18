@@ -1,7 +1,8 @@
 {
   "name": "real-pixel-agent",
   "displayName": "Real Pixel Agent",
-  "description": "Un campus en pixel art où chaque session Claude Code est un personnage : bureau du lead, open space, salle de plan, lounge, annexe. Suivi exact via les hooks Claude Code.",
+  "icon": "media/icon.png",
+  "description": "Un campus en pixel art dans VS Code : chaque session Claude Code est un personnage qui travaille, attend une permission, planifie ou se repose. Suivi exact via les hooks Claude Code, journal du temps par agent, export CSV, sous-agents, multi-projets et rendu 3D expérimental.",
   "version": "0.5.6",
   "publisher": "aymard",
   "license": "MIT",
@@ -18,14 +19,45 @@
   },
   "categories": [
     "Visualization",
+    "AI",
     "Other"
   ],
   "keywords": [
     "claude",
     "claude code",
+    "anthropic",
+    "ai",
+    "ai agents",
     "agents",
-    "pixel art"
+    "multi-agent",
+    "subagents",
+    "sessions",
+    "hooks",
+    "monitoring",
+    "dashboard",
+    "visualization",
+    "productivity",
+    "time tracking",
+    "journal",
+    "permissions",
+    "plan mode",
+    "pixel art",
+    "pixel",
+    "campus",
+    "office",
+    "3d",
+    "three.js",
+    "webview",
+    "fun",
+    "gamification",
+    "claude-code",
+    "terminal"
   ],
+  "galleryBanner": {
+    "color": "#1b1f3b",
+    "theme": "dark"
+  },
+  "pricing": "Free",
   "activationEvents": [
     "onStartupFinished"
   ],

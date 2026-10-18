@@ -2,7 +2,23 @@
 
 Un campus en pixel art dans VS Code, façon bureaux de la Silicon Valley : chaque session Claude Code active est un personnage qui travaille, se déplace et se réunit selon ce qu'il fait réellement.
 
+![VS Code](https://img.shields.io/badge/VS%20Code-%E2%89%A5%201.85-007ACC?logo=visualstudiocode&logoColor=white)
+![Licence MIT](https://img.shields.io/badge/licence-MIT-green)
+![Claude Code](https://img.shields.io/badge/Claude%20Code-hooks-D97757)
+![Pixel art](https://img.shields.io/badge/rendu-pixel%20art%20%2B%203D%20exp%C3%A9rimental-8A2BE2)
+
 ![Campus de nuit avec l'annexe](media/preview.png)
+
+## Fonctionnalités
+
+- **Un personnage par session Claude Code** : il travaille, attend une permission, planifie ou se repose selon ce que fait réellement l'agent.
+- **Suivi exact via les hooks** (ou estimé depuis les transcriptions, sans rien installer).
+- **Sous-agents, agent lead et salle de plan** : les équipes se réunissent quand un plan est en rédaction.
+- **Multi-projets** : les agents de tes autres workspaces dans un bâtiment voisin (annexe).
+- **Journal de la journée** : temps par agent et par état sur 7 jours, export CSV.
+- **Notifications et son** à chaque demande de permission, accès direct au terminal de l'agent.
+- **Jour, coucher de soleil ou nuit**, minimap, caméra libre, avatar visiteur au clavier.
+- **Rendu 3D expérimental** (Three.js), en option.
 
 ## Installation
 
