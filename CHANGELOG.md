@@ -1,5 +1,8 @@
 # Journal des versions
 
+## 0.5.7
+- Add marketplace description, keywords, categories, icon and banner
+
 ## 0.5.6
 - **Attente précise** : un agent qui attend n'affiche plus « attend ta réponse » pour tout. Le campus distingue « te pose une question » (avec le texte de la question), « attend ta validation du plan », « attend ton prochain message » et « a terminé, rien à te demander ». Seules les attentes qui demandent quelque chose sont comptées ; un tour fini n'a plus de « ? » en 2D et un « ✓ » calme en 3D. Réinstalle le hook pour recevoir le texte de la question.
 - **Réflexion longue** : un tour en cours n'est plus déclaré « en pause » avant 10 min sans activité (3 min auparavant).
