@@ -3,7 +3,7 @@
   "displayName": "Real Pixel Agent",
   "icon": "media/icon.png",
   "description": "Un campus en pixel art dans VS Code : chaque session Claude Code est un personnage qui travaille, attend une permission, planifie ou se repose. Suivi exact via les hooks Claude Code, journal du temps par agent, export CSV, sous-agents, multi-projets et rendu 3D expérimental.",
-  "version": "0.5.7",
+  "version": "0.5.8",
   "publisher": "aymardkouakou",
   "license": "MIT",
   "repository": {
