@@ -1,5 +1,12 @@
 # Journal des versions
 
+## 0.5.8
+- **Hook durci** : secrets masqués (JWT, URL, en-têtes, chaînes opaques) et fichiers d'événements privés.
+- **settings.json** : lien symbolique conservé, JSON invalide ou hooks mal formés refusés, fusion refaite si le fichier change pendant l'écriture.
+- **Événements** : rotation du fichier sans perdre les pids de la session.
+- **Désinstallation** : retire aussi le dossier des événements.
+- **Publisher** : `aymardkouakou`.
+
 ## 0.5.7
 - Add marketplace description, keywords, categories, icon and banner
 
