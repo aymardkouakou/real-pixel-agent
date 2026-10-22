@@ -51,7 +51,12 @@ export class Journal {
   }
 
   csv(labels: Record<string, string>): string {
-    const esc = (v: unknown) => `"${String(v).replace(/"/g, '""')}"`;
+    // Un titre vient d'un prompt : on neutralise l'injection de formules (=, +, -, @) à l'ouverture dans un tableur.
+    const esc = (v: unknown) => {
+      let t = String(v).replace(/[\r\n]+/g, ' ');
+      if (/^[=+\-@\t]/.test(t)) t = "'" + t;
+      return `"${t.replace(/"/g, '""')}"`;
+    };
     const rows = ['jour;agent;titre;projet;sous-agent;etat;minutes'];
     for (const { day, agents } of this.summary(this.keepDays)) {
       for (const a of agents) {
@@ -60,6 +65,6 @@ export class Journal {
         }
       }
     }
-    return rows.join('\n') + '\n';
+    return '\uFEFF' + rows.join('\n') + '\n'; // BOM : Excel lit correctement les accents
   }
 }

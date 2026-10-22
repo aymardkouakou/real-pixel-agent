@@ -2,9 +2,10 @@ import * as vscode from 'vscode';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as cp from 'child_process';
+import * as crypto from 'crypto';
 import { AgentInfo, AgentState, Scanner, ScannerOptions, defaultProjectsDir } from './scanner';
 import {
-  HookStore, claudeSettingsPath, dataDir, eventsDir, hookCommand, hooksStatus, mergeHooks, readSettings, removeHooks, writeSettings,
+  HookStore, claudeSettingsPath, dataDir, eventsDir, hookCommand, hooksStatus, mergeHooks, readSettings, removeHooks, updateSettings,
 } from './hooks';
 import { Journal } from './journal';
 import { BODY } from './webviewBody';
@@ -50,7 +51,9 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {}
 
-interface Override { name?: string; seed?: number }
+interface Override { name?: string; seed?: number; seen?: number }
+
+const OVERRIDE_TTL_MS = 30 * 24 * 3600_000;
 
 class Hub implements vscode.Disposable {
   private webviews = new Set<vscode.Webview>();
@@ -77,6 +80,7 @@ class Hub implements vscode.Disposable {
     this.scanner.hooks = this.hooks;
     this.journal = new Journal(ctx.globalState);
     this.overrides = ctx.globalState.get<Record<string, Override>>('rpa.overrides', {});
+    this.pruneOverrides();
     this.status = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 50);
     this.status.command = 'realPixelAgent.open';
     this.refreshHookScript();
@@ -167,6 +171,7 @@ class Hub implements vscode.Disposable {
     }
     for (const a of agents) {
       const o = this.overrides[a.id];
+      if (o) o.seen = Date.now();
       if (o?.name) a.title = o.name;
     }
     this.agents = agents;
@@ -308,10 +313,11 @@ class Hub implements vscode.Disposable {
           prompt: 'Laisse vide pour revenir au titre de la session.',
         });
         if (name === undefined) return;
-        this.setOverride(a.id, { name: name.trim() || undefined });
+        this.setOverride(a.id, { name: name.trim().slice(0, 60) || undefined });
         break;
       }
       case 'reroll': {
+        if (typeof m.id !== 'string' || !this.agents.some((x) => x.id === m.id)) return;
         const cur = this.overrides[m.id]?.seed ?? 0;
         this.setOverride(m.id, { seed: m.reset ? undefined : cur + 1 });
         break;
@@ -328,11 +334,21 @@ class Hub implements vscode.Disposable {
     }
   }
 
+  /** Oublie les surnoms / looks des sessions qu'on n'a pas vues depuis 30 jours. */
+  private pruneOverrides(now = Date.now()) {
+    let changed = false;
+    for (const [id, o] of Object.entries(this.overrides)) {
+      if (o.seen === undefined) { o.seen = now; changed = true; } // anciennes données : on démarre le compte maintenant
+      else if (now - o.seen > OVERRIDE_TTL_MS) { delete this.overrides[id]; changed = true; }
+    }
+    if (changed) this.ctx.globalState.update('rpa.overrides', this.overrides);
+  }
+
   private setOverride(id: string, patch: Override) {
-    const o = { ...(this.overrides[id] || {}), ...patch };
+    const o = { ...(this.overrides[id] || {}), ...patch, seen: Date.now() };
     if (o.name === undefined) delete o.name;
     if (o.seed === undefined) delete o.seed;
-    if (Object.keys(o).length) this.overrides[id] = o; else delete this.overrides[id];
+    if (o.name !== undefined || o.seed !== undefined) this.overrides[id] = o; else delete this.overrides[id];
     this.ctx.globalState.update('rpa.overrides', this.overrides);
     this.publish(true);
   }
@@ -380,8 +396,12 @@ class Hub implements vscode.Disposable {
       filters: { CSV: ['csv'] },
     });
     if (!uri) return;
-    fs.writeFileSync(uri.fsPath, this.journal.csv(STATE_LABEL));
-    vscode.window.showInformationMessage(`Journal exporté : ${path.basename(uri.fsPath)}`);
+    try {
+      fs.writeFileSync(uri.fsPath, this.journal.csv(STATE_LABEL));
+      vscode.window.showInformationMessage(`Journal exporté : ${path.basename(uri.fsPath)}`);
+    } catch (err: any) {
+      vscode.window.showErrorMessage(`Export impossible : ${err?.message || err}`);
+    }
   }
 
   newAgent() {
@@ -419,7 +439,9 @@ class Hub implements vscode.Disposable {
       candidates.push(...out.split(/\r?\n/).map((s) => s.trim()).filter(Boolean));
     } catch { /* ignore */ }
     candidates.push('/opt/homebrew/bin/node', '/usr/local/bin/node', '/usr/bin/node');
-    return candidates.find((c) => { try { return fs.statSync(c).isFile(); } catch { return false; } });
+    // chemins éphémères (fnm multishell, dossiers temporaires) : ils disparaissent à la fermeture du shell et casseraient les hooks
+    const ephemeral = /fnm_multishells|[\\/]var[\\/]folders[\\/]|[\\/]tmp[\\/]/i;
+    return candidates.find((c) => !ephemeral.test(c) && (() => { try { return fs.statSync(c).isFile(); } catch { return false; } })());
   }
 
   async maybeOfferHooks() {
@@ -451,7 +473,7 @@ class Hub implements vscode.Disposable {
       fs.copyFileSync(this.ctx.asAbsolutePath(path.join('hook', 'real-pixel-agent-hook.js')), this.scriptPath());
       const node = this.findNode();
       const cmd = node ? hookCommand(node, this.scriptPath(), false) : hookCommand(process.execPath, this.scriptPath(), true);
-      writeSettings(mergeHooks(settings, cmd), file);
+      updateSettings((cur) => mergeHooks(cur, cmd), file);
       this.ctx.globalState.update('rpa.hooksPromptDone', true);
       this.setupWatchers();
       this.refresh(true);
@@ -468,7 +490,7 @@ class Hub implements vscode.Disposable {
     try {
       const s = readSettings(file);
       if (hooksStatus(s) === 'none') { vscode.window.showInformationMessage('Aucun hook Real Pixel Agent à retirer.'); return; }
-      writeSettings(removeHooks(s), file);
+      updateSettings(removeHooks, file);
       try { fs.rmSync(this.scriptPath(), { force: true }); } catch { /* ignore */ }
       this.ctx.globalState.update('rpa.hooksPromptDone', true); // pas de ré-offre juste après un retrait volontaire
       vscode.window.showInformationMessage('Hooks Real Pixel Agent retirés. Tes autres hooks sont intacts.');
@@ -482,7 +504,7 @@ class Hub implements vscode.Disposable {
   // -------------------------------------------------------------------------
   private html(webview: vscode.Webview): string {
     const media = (f: string) => webview.asWebviewUri(vscode.Uri.joinPath(this.ctx.extensionUri, 'media', f));
-    const nonce = Array.from({ length: 24 }, () => Math.random().toString(36)[2]).join('');
+    const nonce = crypto.randomBytes(18).toString('base64').replace(/[^A-Za-z0-9]/g, 'x');
     return `<!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -504,6 +526,8 @@ ${this.cfg().get<string>('renderer', 'pixel') === '3d' ? `  <script nonce="${non
     if (this.debounce) { clearTimeout(this.debounce); this.debounce = undefined; }
     for (const w of this.watchers) { try { w.close(); } catch { /* ignore */ } }
     this.journal.flush();
+    this.pruneOverrides();
+    this.ctx.globalState.update('rpa.overrides', this.overrides);
     this.status.dispose();
     this.panel?.dispose();
   }

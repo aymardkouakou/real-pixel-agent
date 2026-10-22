@@ -48,6 +48,9 @@ const hasOurs = (groups: any[]) => groups.some((g) => Array.isArray(g?.hooks) &&
 /** Ajoute (ou remplace) nos hooks sans toucher aux autres. */
 export function mergeHooks(settings: Settings, command: string): Settings {
   const s: Settings = { ...settings };
+  if (s.hooks !== undefined && (s.hooks === null || typeof s.hooks !== 'object' || Array.isArray(s.hooks))) {
+    throw new Error('la clé « hooks » de settings.json a un format inattendu : je ne la modifie pas');
+  }
   const hooks: Record<string, any[]> = { ...(s.hooks || {}) };
   for (const ev of HOOK_EVENTS) {
     if (hooks[ev] !== undefined && !Array.isArray(hooks[ev])) continue; // format inattendu : on ne l'écrase pas
@@ -86,18 +89,40 @@ export function readSettings(file = claudeSettingsPath()): Settings {
   if (!fs.existsSync(file)) return {};
   const raw = fs.readFileSync(file, 'utf8');
   if (!raw.trim()) return {};
-  return JSON.parse(raw); // lève une erreur si le fichier est invalide : on ne l'écrase jamais dans ce cas
+  const parsed = JSON.parse(raw); // lève une erreur si le fichier est invalide : on ne l'écrase jamais dans ce cas
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('settings.json doit contenir un objet JSON');
+  return parsed;
 }
 
-export function writeSettings(settings: Settings, file = claudeSettingsPath()): void {
+/**
+ * Lecture-modification-écriture de settings.json : si Claude Code (ou autre chose) écrit le fichier entre notre lecture
+ * et notre renommage, on recommence à partir du nouveau contenu au lieu de l'écraser.
+ */
+export function updateSettings(fn: (s: Settings) => Settings, file = claudeSettingsPath()): void {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const raw = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+    const next = fn(readSettings(file));
+    const same = () => (fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '') === raw;
+    if (writeSettings(next, file, same)) return;
+  }
+  throw new Error('settings.json est modifié en continu par un autre processus : réessaie dans un instant');
+}
+
+/** Retourne false (sans rien écrire) si `stillValid` échoue juste avant le renommage. */
+export function writeSettings(settings: Settings, requested = claudeSettingsPath(), stillValid?: () => boolean): boolean {
+  // settings.json est souvent un lien symbolique (dotfiles) : on écrit dans la cible, sans remplacer le lien.
+  let file = requested;
+  try { file = fs.realpathSync(requested); } catch { /* fichier absent */ }
   fs.mkdirSync(path.dirname(file), { recursive: true });
   const backup = file + '.real-pixel-agent.bak';
   if (fs.existsSync(file) && !fs.existsSync(backup)) fs.copyFileSync(file, backup);
-  const tmp = file + '.tmp-rpa';
+  const tmp = `${file}.tmp-rpa-${process.pid}`;
   try {
-    const mode = fs.existsSync(file) ? fs.statSync(file).mode & 0o777 : 0o644;
+    const mode = fs.existsSync(file) ? fs.statSync(file).mode & 0o777 : 0o600;
     fs.writeFileSync(tmp, JSON.stringify(settings, null, 2) + '\n', { mode });
+    if (stillValid && !stillValid()) { fs.rmSync(tmp, { force: true }); return false; }
     fs.renameSync(tmp, file);
+    return true;
   } catch (err) {
     try { fs.rmSync(tmp, { force: true }); } catch { /* ignore */ }
     throw err;
@@ -175,6 +200,7 @@ export const hookKey = (sid: string, aid?: string) => (aid ? `${sid}/agent-${aid
 export class HookStore implements HookSource {
   private states = new Map<string, HookState>();
   private offsets = new Map<string, number>();
+  private inodes = new Map<string, number>();
   private lastEventAt = 0;
 
   constructor(public dir = eventsDir(), private recentMs = 24 * 3600_000) {}
@@ -197,7 +223,10 @@ export class HookStore implements HookSource {
         }
         off = 0;
       }
-      if (st.size < off) { off = 0; this.dropSession(n.replace(/\.jsonl$/, '')); }
+      // fichier réécrit (rotation du hook) : on relit depuis le début, l'état déjà connu (pids…) est conservé
+      const ino = this.inodes.get(f);
+      if (st.size < off || (ino !== undefined && ino !== st.ino)) off = 0;
+      this.inodes.set(f, st.ino);
       if (st.size === off) continue;
       const fd = fs.openSync(f, 'r');
       let text = '';
@@ -226,10 +255,6 @@ export class HookStore implements HookSource {
       }
     }
     return changed;
-  }
-
-  private dropSession(sid: string) {
-    for (const k of [...this.states.keys()]) if (k === sid || k.startsWith(sid + '/')) this.states.delete(k);
   }
 
   get(sid: string, sub?: string): HookState | undefined {
