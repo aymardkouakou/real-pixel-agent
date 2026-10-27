@@ -1,5 +1,8 @@
 # Journal des versions
 
+## 0.5.9
+- **Open VSX** : l'extension est aussi publiée sur open-vsx.org ; la CI y envoie le `.vsix` après la release GitHub (secret `OVSX_PAT`).
+
 ## 0.5.8
 - **Hook durci** : secrets masqués (JWT, URL, en-têtes, chaînes opaques) et fichiers d'événements privés.
 - **settings.json** : lien symbolique conservé, JSON invalide ou hooks mal formés refusés, fusion refaite si le fichier change pendant l'écriture.

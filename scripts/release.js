@@ -1,7 +1,8 @@
 // Prépare une version : npm run release -- <patch|minor|major|x.y.z> [--push]
 // 1. calcule la nouvelle version   2. vérifie la section correspondante du CHANGELOG
 // 3. met à jour package.json / package-lock.json   4. commit « Version x.y.z »
-// 5. (--push) pousse main : la CI teste, empaquette, crée le tag vx.y.z et publie la release.
+// 5. (--push) pousse main : la CI teste, empaquette, crée le tag vx.y.z, publie la release
+//    GitHub puis sur Open VSX (secret OVSX_PAT).
 'use strict';
 const fs = require('fs');
 const path = require('path');
@@ -30,7 +31,7 @@ run(`git commit -m "Version ${next}"`);
 console.log(`✓ version ${next} commitée`);
 if (push) {
   run('git push origin HEAD:main');
-  console.log(`✓ poussé sur main : la CI publiera la release v${next} si les tests passent`);
+  console.log(`✓ poussé sur main : la CI publiera la release v${next} (GitHub + Open VSX) si les tests passent`);
 } else {
   console.log('→ pour publier : git push origin main');
 }

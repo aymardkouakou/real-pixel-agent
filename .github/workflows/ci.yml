@@ -3,7 +3,8 @@ name: CI
 # Tests + paquet .vsix à chaque push et pull request.
 # Release automatique : sur main (ou via « Run workflow »), si la version du package.json
 # n'a pas encore de release GitHub, le job « release » crée le tag vX.Y.Z et publie la
-# release avec les notes du CHANGELOG et le .vsix. Pousser un tag vX.Y.Z fonctionne aussi.
+# release avec les notes du CHANGELOG et le .vsix, puis publie le .vsix sur Open VSX.
+# Pousser un tag vX.Y.Z fonctionne aussi.
 # CI TEMPORAIREMENT DÉSACTIVÉE : déclenchement manuel uniquement (onglet Actions → « Run workflow »).
 # Pour la réactiver, remplacer le bloc « on: » par :
 #   on:
@@ -97,3 +98,15 @@ jobs:
             --target "${GITHUB_SHA}" \
             --title "Real Pixel Agent ${{ steps.v.outputs.version }}" \
             --notes-file release-notes.md
+
+      # Nécessite le secret de dépôt OVSX_PAT (token open-vsx.org) ; ignoré s'il est absent.
+      - name: Publication sur Open VSX
+        if: steps.v.outputs.publish == 'true'
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_PAT }}
+        run: |
+          if [ -z "${OVSX_PAT}" ]; then
+            echo "::warning::Secret OVSX_PAT absent : publication Open VSX ignorée."
+            exit 0
+          fi
+          npx --yes ovsx publish ./*.vsix -p "${OVSX_PAT}"
